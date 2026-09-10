@@ -6,8 +6,8 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
-    "db:schema": "node src/sql/schema.js",
-    "db:seed": "node src/sql/seed.js",
+    "db:schema": "node src/sql/run-schema.js",
+    "db:seed": "node src/sql/run-seed.js",
     "test": "node --test",
     "test:watch": "node --test --watch"
   },
