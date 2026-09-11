@@ -2,6 +2,23 @@ import test from "node:test";
 import assert from "node:assert";
 import request from "supertest";
 import app from "../src/app.js";
+import {
+    setupTestDatabase,
+    cleanTestDatabase,
+    closeTestDatabase,
+} from "./setup.js";
+
+test.before(async () => {
+    await setupTestDatabase();
+});
+
+test.beforeEach(async () => {
+    await cleanTestDatabase();
+});
+
+test.after(async () => {
+    await closeTestDatabase();
+});
 
 test("POST /monitors should create a monitor", async () => {
     const response = await request(app)

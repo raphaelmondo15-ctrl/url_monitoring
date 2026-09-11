@@ -8,8 +8,8 @@
     "dev": "node --watch src/server.js",
     "db:schema": "node src/sql/run-schema.js",
     "db:seed": "node src/sql/run-seed.js",
-    "test": "node --test",
-    "test:watch": "node --test --watch"
+    "test": "NODE_ENV=test node --test",
+    "test:watch": "NODE_ENV=test node --test --watch"
   },
   "keywords": [
   "url-monitoring",
