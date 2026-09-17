@@ -121,3 +121,36 @@ test("GET /monitors should reject an invalid limit", async () => {
 
     assert.strictEqual(response.status, 400);
 });
+
+test("GET /monitors/:id should return a monitor", async () => {
+    const createResponse = await request(app)
+        .post("/monitors")
+        .send({
+            name: "Monitor Details",
+            url: "https://example.com",
+        });
+
+    const monitorId = createResponse.body.id;
+
+    const response = await request(app)
+        .get(`/monitors/${monitorId}`);
+
+    assert.strictEqual(response.status, 200);
+    assert.strictEqual(response.body.id, monitorId);
+    assert.strictEqual(response.body.name, "Monitor Details");
+    assert.strictEqual(response.body.url, "https://example.com");
+});
+
+test("GET /monitors/:id should return 404 for a non-existent monitor", async () => {
+    const response = await request(app)
+        .get("/monitors/999999");
+
+    assert.strictEqual(response.status, 404);
+});
+
+test("GET /monitors/:id should reject an invalid ID", async () => {
+    const response = await request(app)
+        .get("/monitors/abc");
+
+    assert.strictEqual(response.status, 400);
+});

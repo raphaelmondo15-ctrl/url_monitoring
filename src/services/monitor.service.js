@@ -79,3 +79,12 @@ export async function getMonitors({ after, limit }) {
         next_cursor: nextCursor,
     };
 }
+
+export async function getMonitorById(id) {
+    const result = await pool.query(
+        'SELECT * FROM monitors WHERE id = $1',
+        [id]
+    );
+
+    return result.rows[0] ?? null;
+}
