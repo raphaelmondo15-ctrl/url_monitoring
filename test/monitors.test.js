@@ -85,3 +85,39 @@ test("POST /monitors should use default values", async () => {
     assert.strictEqual(response.body.interval_seconds, 60);
     assert.strictEqual(response.body.expected_status, 200);
 });
+
+test("GET /monitors should return a paginated list", async () => {
+    await request(app)
+        .post("/monitors")
+        .send({
+            name: "Monitor 1",
+            url: "https://example.com",
+        });
+
+    await request(app)
+        .post("/monitors")
+        .send({
+            name: "Monitor 2",
+            url: "https://example.org",
+        });
+
+    const response = await request(app)
+        .get("/monitors")
+        .query({
+            limit: 10,
+        });
+
+    assert.strictEqual(response.status, 200);
+    assert.strictEqual(response.body.items.length, 2);
+    assert.strictEqual(response.body.next_cursor, null);
+});
+
+test("GET /monitors should reject an invalid limit", async () => {
+    const response = await request(app)
+        .get("/monitors")
+        .query({
+            limit: 0,
+        });
+
+    assert.strictEqual(response.status, 400);
+});
