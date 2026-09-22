@@ -88,3 +88,29 @@ export async function getMonitorById(id) {
 
     return result.rows[0] ?? null;
 }
+
+export async function updateMonitor(id, data) {
+    const fields = [];
+    const values = [];
+
+    for (const [key, value] of Object.entries(data)) {
+        fields.push(`${key} = $${values.length + 1}`);
+        values.push(value);
+    }
+
+    if (fields.length === 0) {
+        return null;
+    }
+
+    values.push(id);
+
+    const result = await pool.query(
+        `UPDATE monitors
+         SET ${fields.join(", ")}
+         WHERE id = $${values.length}
+         RETURNING *`,
+        values
+    );
+
+    return result.rows[0] ?? null;
+}
