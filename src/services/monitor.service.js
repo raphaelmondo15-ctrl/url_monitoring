@@ -114,3 +114,14 @@ export async function updateMonitor(id, data) {
 
     return result.rows[0] ?? null;
 }
+
+export async function deleteMonitor(id) {
+    const result = await pool.query(
+        `DELETE FROM monitors
+         WHERE id = $1
+         RETURNING *`,
+        [id]
+    );
+
+    return result.rows[0] ?? null;
+}

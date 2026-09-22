@@ -97,3 +97,27 @@ export async function updateMonitor(req, res, next) {
         next(error);
     }
 }
+
+export async function deleteMonitor(req, res, next) {
+    try {
+        const id = Number(req.params.id);
+
+        if (!Number.isInteger(id) || id <= 0) {
+            return res.status(400).json({
+                error: "Invalid monitor ID",
+            });
+        }
+
+        const monitor = await monitorService.deleteMonitor(id);
+
+        if (!monitor) {
+            return res.status(404).json({
+                error: "Monitor not found",
+            });
+        }
+
+        res.status(200).json(monitor);
+    } catch (error) {
+        next(error);
+    }
+}
