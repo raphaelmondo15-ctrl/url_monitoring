@@ -154,3 +154,69 @@ test("GET /monitors/:id should reject an invalid ID", async () => {
 
     assert.strictEqual(response.status, 400);
 });
+
+test("PATCH /monitors/:id should update a monitor", async () => {
+    const createResponse = await request(app)
+        .post("/monitors")
+        .send({
+            name: "Original Monitor",
+            url: "https://example.com",
+            interval_seconds: 60,
+            expected_status: 200,
+        });
+
+    const monitorId = createResponse.body.id;
+
+    const response = await request(app)
+        .patch(`/monitors/${monitorId}`)
+        .send({
+            name: "Updated Monitor",
+            interval_seconds: 120,
+        });
+
+    assert.strictEqual(response.status, 200);
+    assert.strictEqual(response.body.id, monitorId);
+    assert.strictEqual(response.body.name, "Updated Monitor");
+    assert.strictEqual(response.body.interval_seconds, 120);
+    assert.strictEqual(response.body.url, "https://example.com");
+    assert.strictEqual(response.body.expected_status, 200);
+});
+
+test("PATCH /monitors/:id should reject an invalid interval", async () => {
+    const createResponse = await request(app)
+        .post("/monitors")
+        .send({
+            name: "Interval Monitor",
+            url: "https://example.com",
+        });
+
+    const monitorId = createResponse.body.id;
+
+    const response = await request(app)
+        .patch(`/monitors/${monitorId}`)
+        .send({
+            interval_seconds: 5,
+        });
+
+    assert.strictEqual(response.status, 400);
+});
+
+test("PATCH /monitors/:id should return 404 for a non-existent monitor", async () => {
+    const response = await request(app)
+        .patch("/monitors/999999")
+        .send({
+            name: "Updated Monitor",
+        });
+
+    assert.strictEqual(response.status, 404);
+});
+
+test("PATCH /monitors/:id should reject an invalid ID", async () => {
+    const response = await request(app)
+        .patch("/monitors/abc")
+        .send({
+            name: "Updated Monitor",
+        });
+
+    assert.strictEqual(response.status, 400);
+});
