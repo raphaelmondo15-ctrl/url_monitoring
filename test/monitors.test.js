@@ -1,0 +1,222 @@
+import test from "node:test";
+import assert from "node:assert";
+import request from "supertest";
+import app from "../src/app.js";
+import {
+    setupTestDatabase,
+    cleanTestDatabase,
+    closeTestDatabase,
+} from "./setup.js";
+
+test.before(async () => {
+    await setupTestDatabase();
+});
+
+test.beforeEach(async () => {
+    await cleanTestDatabase();
+});
+
+test.after(async () => {
+    await closeTestDatabase();
+});
+
+test("POST /monitors should create a monitor", async () => {
+    const response = await request(app)
+        .post("/monitors")
+        .send({
+            name: "Test Monitor",
+            url: "https://example.com",
+            interval_seconds: 60,
+            expected_status: 200,
+        });
+
+    assert.strictEqual(response.status, 201);
+    assert.strictEqual(response.body.name, "Test Monitor");
+    assert.strictEqual(response.body.url, "https://example.com");
+    assert.strictEqual(response.body.interval_seconds, 60);
+    assert.strictEqual(response.body.expected_status, 200);
+    assert.strictEqual(response.body.is_active, true);
+});
+
+test("POST /monitors should reject an invalid URL", async () => {
+    const response = await request(app)
+        .post("/monitors")
+        .send({
+            name: "Invalid Monitor",
+            url: "not-a-url",
+        });
+
+    assert.strictEqual(response.status, 400);
+});
+
+test("POST /monitors should reject interval below 10 seconds", async () => {
+    const response = await request(app)
+        .post("/monitors")
+        .send({
+            name: "Bad Interval",
+            url: "https://example.com",
+            interval_seconds: 5,
+        });
+
+    assert.strictEqual(response.status, 400);
+});
+
+test("POST /monitors should reject interval above 3600 seconds", async () => {
+    const response = await request(app)
+        .post("/monitors")
+        .send({
+            name: "Bad Interval",
+            url: "https://example.com",
+            interval_seconds: 4000,
+        });
+
+    assert.strictEqual(response.status, 400);
+});
+
+test("POST /monitors should use default values", async () => {
+    const response = await request(app)
+        .post("/monitors")
+        .send({
+            name: "Default Monitor",
+            url: "https://example.com",
+        });
+
+    assert.strictEqual(response.status, 201);
+    assert.strictEqual(response.body.interval_seconds, 60);
+    assert.strictEqual(response.body.expected_status, 200);
+});
+
+test("GET /monitors should return a paginated list", async () => {
+    await request(app)
+        .post("/monitors")
+        .send({
+            name: "Monitor 1",
+            url: "https://example.com",
+        });
+
+    await request(app)
+        .post("/monitors")
+        .send({
+            name: "Monitor 2",
+            url: "https://example.org",
+        });
+
+    const response = await request(app)
+        .get("/monitors")
+        .query({
+            limit: 10,
+        });
+
+    assert.strictEqual(response.status, 200);
+    assert.strictEqual(response.body.items.length, 2);
+    assert.strictEqual(response.body.next_cursor, null);
+});
+
+test("GET /monitors should reject an invalid limit", async () => {
+    const response = await request(app)
+        .get("/monitors")
+        .query({
+            limit: 0,
+        });
+
+    assert.strictEqual(response.status, 400);
+});
+
+test("GET /monitors/:id should return a monitor", async () => {
+    const createResponse = await request(app)
+        .post("/monitors")
+        .send({
+            name: "Monitor Details",
+            url: "https://example.com",
+        });
+
+    const monitorId = createResponse.body.id;
+
+    const response = await request(app)
+        .get(`/monitors/${monitorId}`);
+
+    assert.strictEqual(response.status, 200);
+    assert.strictEqual(response.body.id, monitorId);
+    assert.strictEqual(response.body.name, "Monitor Details");
+    assert.strictEqual(response.body.url, "https://example.com");
+});
+
+test("GET /monitors/:id should return 404 for a non-existent monitor", async () => {
+    const response = await request(app)
+        .get("/monitors/999999");
+
+    assert.strictEqual(response.status, 404);
+});
+
+test("GET /monitors/:id should reject an invalid ID", async () => {
+    const response = await request(app)
+        .get("/monitors/abc");
+
+    assert.strictEqual(response.status, 400);
+});
+
+test("PATCH /monitors/:id should update a monitor", async () => {
+    const createResponse = await request(app)
+        .post("/monitors")
+        .send({
+            name: "Original Monitor",
+            url: "https://example.com",
+            interval_seconds: 60,
+            expected_status: 200,
+        });
+
+    const monitorId = createResponse.body.id;
+
+    const response = await request(app)
+        .patch(`/monitors/${monitorId}`)
+        .send({
+            name: "Updated Monitor",
+            interval_seconds: 120,
+        });
+
+    assert.strictEqual(response.status, 200);
+    assert.strictEqual(response.body.id, monitorId);
+    assert.strictEqual(response.body.name, "Updated Monitor");
+    assert.strictEqual(response.body.interval_seconds, 120);
+    assert.strictEqual(response.body.url, "https://example.com");
+    assert.strictEqual(response.body.expected_status, 200);
+});
+
+test("PATCH /monitors/:id should reject an invalid interval", async () => {
+    const createResponse = await request(app)
+        .post("/monitors")
+        .send({
+            name: "Interval Monitor",
+            url: "https://example.com",
+        });
+
+    const monitorId = createResponse.body.id;
+
+    const response = await request(app)
+        .patch(`/monitors/${monitorId}`)
+        .send({
+            interval_seconds: 5,
+        });
+
+    assert.strictEqual(response.status, 400);
+});
+
+test("PATCH /monitors/:id should return 404 for a non-existent monitor", async () => {
+    const response = await request(app)
+        .patch("/monitors/999999")
+        .send({
+            name: "Updated Monitor",
+        });
+
+    assert.strictEqual(response.status, 404);
+});
+
+test("PATCH /monitors/:id should reject an invalid ID", async () => {
+    const response = await request(app)
+        .patch("/monitors/abc")
+        .send({
+            name: "Updated Monitor",
+        });
+
+    assert.strictEqual(response.status, 400);
+});

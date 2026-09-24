@@ -1,0 +1,44 @@
+{
+  "name": "url_monitoring",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "db:schema": "node src/sql/run-schema.js",
+    "db:seed": "node src/sql/run-seed.js",
+    "test": "NODE_ENV=test node --test",
+    "test:watch": "NODE_ENV=test node --test --watch"
+  },
+  "keywords": [
+  "url-monitoring",
+  "uptime-monitoring",
+  "status-page",
+  "health-check",
+  "postgresql",
+  "nodejs",
+  "express",
+  "api"
+],
+  "author": "Mondo Raphael",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "helmet": "^8.3.0",
+    "http-errors": "^2.0.1",
+    "pg": "^8.23.0",
+    "pino": "^10.3.1",
+    "pino-http": "^11.0.0",
+    "swagger-jsdoc": "^6.3.0",
+    "swagger-ui-express": "^5.0.1",
+    "yamljs": "^0.3.0",
+    "zod": "^4.5.4"
+  },
+  "devDependencies": {
+    "supertest": "^7.2.2"
+  }
+}
