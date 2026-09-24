@@ -1,5 +1,6 @@
 import { createCheck } from "../services/check.service.js";
 import { handleIncident } from "../services/incident.service.js";
+import { getActiveMonitors } from "../services/monitor.service.js";
 
 export async function checkMonitor(monitor) {
     const startedAt = Date.now();
@@ -43,4 +44,41 @@ export async function checkMonitor(monitor) {
     await handleIncident(monitor.id, check);
 
     return check;
+}
+
+const nextCheckTimes = new Map();
+
+export function startScheduler() {
+    const timer = setInterval(async () => {
+        try {
+            const monitors = await getActiveMonitors();
+            const now = Date.now();
+
+            for (const monitor of monitors) {
+                const nextCheck = nextCheckTimes.get(monitor.id) ?? 0;
+
+                if (now < nextCheck) {
+                    continue;
+                }
+
+                nextCheckTimes.set(
+                    monitor.id,
+                    now + monitor.interval_seconds * 1000
+                );
+
+                try {
+                    await checkMonitor(monitor);
+                } catch (error) {
+                    console.error(
+                        `Monitor ${monitor.id} check failed:`,
+                        error.message
+                    );
+                }
+            }
+        } catch (error) {
+            console.error("Scheduler tick failed:", error.message);
+        }
+    }, 1000);
+
+    return timer;
 }
