@@ -125,3 +125,14 @@ export async function deleteMonitor(id) {
 
     return result.rows[0] ?? null;
 }
+
+export async function getActiveMonitors() {
+    const result = await pool.query(
+        `SELECT *
+         FROM monitors
+         WHERE is_active = true
+         ORDER BY id ASC`
+    );
+
+    return result.rows;
+}
