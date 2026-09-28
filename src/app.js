@@ -5,6 +5,7 @@ import monitorRoutes from './routes/monitor.routes.js';
 import checkRoutes from './routes/check.routes.js';
 import uptimeRoutes from './routes/uptime.routes.js';
 import incidentRoutes from './routes/incident.routes.js';
+import monitorIncidentRoutes from './routes/monitor-incident.routes.js';
 
 const app = express();
 
@@ -20,6 +21,7 @@ app.get("/health", (req, res) => {
 app.use("/monitors", monitorRoutes);
 app.use("/monitors", checkRoutes);
 app.use("/monitors", uptimeRoutes);
+app.use("/monitors", monitorIncidentRoutes);
 app.use("/incidents", incidentRoutes);
 
 export default app;

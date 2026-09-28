@@ -48,3 +48,45 @@ test("GET /incidents should return incident history", async () => {
     assert.ok(incident);
     assert.equal(incident.cause, "Server error");
 });
+
+test("GET /monitors/:id/incidents should return incidents for a monitor", async () => {
+    const monitorResult = await pool.query(
+        `INSERT INTO monitors (
+            name,
+            url,
+            interval_seconds,
+            expected_status
+        )
+        VALUES ($1, $2, $3, $4)
+        RETURNING *`,
+        [
+            "Monitor Incident History Test",
+            "https://example.com",
+            60,
+            200
+        ]
+    );
+
+    const monitor = monitorResult.rows[0];
+
+    await pool.query(
+        `INSERT INTO incidents (
+            monitor_id,
+            cause
+        )
+        VALUES ($1, $2), ($1, $3)`,
+        [
+            monitor.id,
+            "Server error",
+            "Timeout"
+        ]
+    );
+
+    const response = await request(app)
+        .get(`/monitors/${monitor.id}/incidents`);
+
+    assert.equal(response.status, 200);
+    assert.equal(response.body.items.length, 2);
+    assert.equal(response.body.items[0].monitor_id, monitor.id);
+    assert.equal(response.body.items[1].monitor_id, monitor.id);
+});

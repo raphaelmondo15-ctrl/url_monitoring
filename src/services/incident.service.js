@@ -55,3 +55,15 @@ export async function getIncidents() {
 
     return result.rows;
 }
+
+export async function getIncidentsByMonitorId(monitorId) {
+    const result = await pool.query(
+        `SELECT *
+         FROM incidents
+         WHERE monitor_id = $1
+         ORDER BY id DESC`,
+        [monitorId]
+    );
+
+    return result.rows;
+}
