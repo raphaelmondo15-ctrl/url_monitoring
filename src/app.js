@@ -2,6 +2,7 @@ import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
 import monitorRoutes from './routes/monitor.routes.js';
+import checkRoutes from './routes/check.routes.js';
 
 const app = express();
 
@@ -15,5 +16,5 @@ app.get("/health", (req, res) => {
 });
 
 app.use("/monitors", monitorRoutes);
-
+app.use("/monitors", checkRoutes);
 export default app;
