@@ -56,3 +56,60 @@ test("GET /monitors/:id/checks should return check history", async () => {
     assert.equal(nextResponse.body.next_cursor, null);
 });
 
+test("GET /monitors/:id/checks.csv should export check history as CSV", async () => {
+    const monitorResult = await pool.query(
+        `INSERT INTO monitors (
+            name,
+            url,
+            interval_seconds,
+            expected_status
+        )
+        VALUES ($1, $2, $3, $4)
+        RETURNING *`,
+        [
+            "CSV Export Test",
+            "https://example.com",
+            60,
+            200
+        ]
+    );
+
+    const monitor = monitorResult.rows[0];
+
+    await pool.query(
+        `INSERT INTO checks (
+            monitor_id,
+            ok,
+            status_code,
+            latency_ms,
+            error
+        )
+        VALUES
+            ($1, true, 200, 120, NULL),
+            ($1, false, 500, 300, 'Server error')`,
+        [monitor.id]
+    );
+
+    const response = await request(app)
+        .get(`/monitors/${monitor.id}/checks.csv`);
+
+    assert.equal(response.status, 200);
+    assert.match(
+        response.headers["content-type"],
+        /text\/csv/
+    );
+
+    assert.match(
+        response.headers["content-disposition"],
+        /monitor-\d+-checks\.csv/
+    );
+
+    assert.match(
+        response.text,
+        /id,monitor_id,checked_at,ok,status_code,latency_ms,error/
+    );
+
+    assert.match(response.text, /true,200,120/);
+    assert.match(response.text, /false,500,300,"Server error"/);
+});
+
