@@ -45,3 +45,13 @@ export async function handleIncident(monitorId, check) {
         client.release();
     }
 }
+
+export async function getIncidents() {
+    const result = await pool.query(
+        `SELECT *
+         FROM incidents
+         ORDER BY id DESC`
+    );
+
+    return result.rows;
+}

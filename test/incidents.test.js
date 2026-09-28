@@ -1,0 +1,50 @@
+import test from "node:test";
+import assert from "node:assert";
+import request from "supertest";
+import pool from "../src/db/pool.js";
+import app from "../src/app.js";
+
+test("GET /incidents should return incident history", async () => {
+    const monitorResult = await pool.query(
+        `INSERT INTO monitors (
+            name,
+            url,
+            interval_seconds,
+            expected_status
+        )
+        VALUES ($1, $2, $3, $4)
+        RETURNING *`,
+        [
+            "Incident History Test",
+            "https://example.com",
+            60,
+            200
+        ]
+    );
+
+    const monitor = monitorResult.rows[0];
+
+    await pool.query(
+        `INSERT INTO incidents (
+            monitor_id,
+            cause
+        )
+        VALUES ($1, $2)`,
+        [
+            monitor.id,
+            "Server error"
+        ]
+    );
+
+    const response = await request(app)
+        .get("/incidents");
+
+           assert.equal(response.status, 200);
+
+    const incident = response.body.items.find(
+        (item) => item.monitor_id === monitor.id
+    );
+
+    assert.ok(incident);
+    assert.equal(incident.cause, "Server error");
+});
