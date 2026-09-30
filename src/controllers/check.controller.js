@@ -1,8 +1,9 @@
 import { getChecksByMonitorId } from "../services/check.service.js";
+import idSchema from "../schemas/id.schema.js";
 
 export async function getMonitorChecks(req, res, next) {
     try {
-        const monitorId = Number(req.params.id);
+        const monitorId = idSchema.parse(Number(req.params.id));
 
         const after = req.query.after !== undefined
             ? Number(req.query.after)
@@ -25,7 +26,7 @@ export async function getMonitorChecks(req, res, next) {
 
 export async function exportMonitorChecksCsv(req, res, next) {
     try {
-        const monitorId = Number(req.params.id);
+        const monitorId = idSchema.parse(Number(req.params.id));
 
         res.status(200);
         res.setHeader("Content-Type", "text/csv");

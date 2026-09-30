@@ -1,6 +1,7 @@
 import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
+import { ZodError } from 'zod';
 import monitorRoutes from './routes/monitor.routes.js';
 import checkRoutes from './routes/check.routes.js';
 import uptimeRoutes from './routes/uptime.routes.js';
@@ -23,5 +24,20 @@ app.use("/monitors", checkRoutes);
 app.use("/monitors", uptimeRoutes);
 app.use("/monitors", monitorIncidentRoutes);
 app.use("/incidents", incidentRoutes);
+
+app.use((err, req, res, next) => {
+  if (err instanceof ZodError) {
+    return res.status(400).json({
+      error: "Validation failed",
+      details: err.issues
+    });
+  }
+  
+  console.error(err);
+  res.status(500).json({
+    error: "Internal Server Error",
+    message: err.message
+  });
+});
 
 export default app;

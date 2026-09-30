@@ -56,6 +56,13 @@ test("GET /monitors/:id/checks should return check history", async () => {
     assert.equal(nextResponse.body.next_cursor, null);
 });
 
+test("GET /monitors/:id/checks should reject an invalid ID", async () => {
+    const response = await request(app)
+        .get("/monitors/abc/checks");
+
+    assert.equal(response.status, 400);
+});
+
 test("GET /monitors/:id/checks.csv should export check history as CSV", async () => {
     const monitorResult = await pool.query(
         `INSERT INTO monitors (
