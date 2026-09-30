@@ -63,6 +63,14 @@ test("GET /monitors/:id/checks should reject an invalid ID", async () => {
     assert.equal(response.status, 400);
 });
 
+test("GET /monitors/:id/checks should return 404 for a non-existent monitor", async () => {
+    const response = await request(app)
+        .get("/monitors/999999/checks");
+
+    assert.equal(response.status, 404);
+    assert.equal(response.body.error, "Monitor not found");
+});
+
 test("GET /monitors/:id/checks.csv should export check history as CSV", async () => {
     const monitorResult = await pool.query(
         `INSERT INTO monitors (

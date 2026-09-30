@@ -1,9 +1,18 @@
 import { getChecksByMonitorId } from "../services/check.service.js";
+import { getMonitorById } from "../services/monitor.service.js";
 import idSchema from "../schemas/id.schema.js";
 
 export async function getMonitorChecks(req, res, next) {
     try {
         const monitorId = idSchema.parse(Number(req.params.id));
+
+        const monitor = await getMonitorById(monitorId);
+
+if (!monitor) {
+    return res.status(404).json({
+        error: "Monitor not found",
+    });
+}
 
         const after = req.query.after !== undefined
             ? Number(req.query.after)
