@@ -2,6 +2,8 @@ import { createCheck } from "../services/check.service.js";
 import { handleIncident } from "../services/incident.service.js";
 import { getActiveMonitors } from "../services/monitor.service.js";
 
+const CHECK_TIMEOUT_MS = 10000;
+
 export async function checkMonitor(monitor) {
     const startedAt = Date.now();
 
@@ -11,7 +13,7 @@ export async function checkMonitor(monitor) {
         response = await fetch(
             monitor.url,
             {
-                signal: AbortSignal.timeout(10000)
+                signal: AbortSignal.timeout(CHECK_TIMEOUT_MS),
             }
         );
     } catch (error) {

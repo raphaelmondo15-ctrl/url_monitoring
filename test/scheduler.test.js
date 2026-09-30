@@ -150,3 +150,46 @@ test("checkMonitor should resolve an open incident when the monitor recovers", a
         });
     }
 });
+
+test("checkMonitor should record a failed check when the request times out", async () => {
+    const server = http.createServer(() => {
+        // Intentionally do not respond.
+    });
+
+    await new Promise((resolve) => {
+        server.listen(0, "127.0.0.1", resolve);
+    });
+
+    const { port } = server.address();
+
+    try {
+        const monitorResult = await pool.query(
+            `INSERT INTO monitors (
+                name,
+                url,
+                interval_seconds,
+                expected_status
+            )
+            VALUES ($1, $2, $3, $4)
+            RETURNING *`,
+            [
+                "Scheduler Timeout Test",
+                `http://127.0.0.1:${port}`,
+                10,
+                200
+            ]
+        );
+
+        const monitor = monitorResult.rows[0];
+
+        const check = await checkMonitor(monitor);
+
+        assert.equal(check.ok, false);
+        assert.equal(check.status_code, null);
+        assert.equal(check.error, "Request timed out");
+    } finally {
+        await new Promise((resolve) => {
+            server.close(resolve);
+        });
+    }
+});
