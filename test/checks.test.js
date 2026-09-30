@@ -142,3 +142,24 @@ test("GET /monitors/:id/checks should reject an invalid limit", async () => {
 
     assert.equal(response.status, 400);
 });
+
+test("GET /monitors/:id/checks should reject a limit above 100", async () => {
+    const response = await request(app)
+        .get("/monitors/1/checks?limit=101");
+
+    assert.equal(response.status, 400);
+});
+
+test("GET /monitors/:id/checks should reject a limit below 1", async () => {
+    const response = await request(app)
+        .get("/monitors/1/checks?limit=0");
+
+    assert.equal(response.status, 400);
+});
+
+test("GET /monitors/:id/checks should reject an invalid after cursor", async () => {
+    const response = await request(app)
+        .get("/monitors/1/checks?after=abc");
+
+    assert.equal(response.status, 400);
+});
