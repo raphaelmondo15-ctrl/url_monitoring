@@ -7,6 +7,7 @@ import checkRoutes from './routes/check.routes.js';
 import uptimeRoutes from './routes/uptime.routes.js';
 import incidentRoutes from './routes/incident.routes.js';
 import monitorIncidentRoutes from './routes/monitor-incident.routes.js';
+import statusRoutes from "./routes/status.routes.js";
 
 const app = express();
 
@@ -24,6 +25,7 @@ app.use("/monitors", checkRoutes);
 app.use("/monitors", uptimeRoutes);
 app.use("/monitors", monitorIncidentRoutes);
 app.use("/incidents", incidentRoutes);
+app.use("/status", statusRoutes);
 
 app.use((err, req, res, next) => {
   if (err instanceof ZodError) {
