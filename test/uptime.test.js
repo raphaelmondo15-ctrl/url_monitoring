@@ -49,3 +49,11 @@ test("GET /monitors/:id/uptime should return uptime and latency metrics", async 
     assert.equal(response.body.average_latency_ms, 200);
     assert.equal(response.body.p95_latency_ms, 290);
 });
+
+test("GET /monitors/:id/uptime should return 404 for a non-existent monitor", async () => {
+    const response = await request(app)
+        .get("/monitors/999999/uptime");
+
+    assert.equal(response.status, 404);
+    assert.equal(response.body.error, "Monitor not found");
+});
