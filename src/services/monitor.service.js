@@ -90,12 +90,22 @@ export async function getMonitorById(id) {
 }
 
 export async function updateMonitor(id, data) {
+    const allowedFields = [
+        "name",
+        "url",
+        "interval_seconds",
+        "expected_status",
+        "is_active"
+    ];
+
     const fields = [];
     const values = [];
 
-    for (const [key, value] of Object.entries(data)) {
-        fields.push(`${key} = $${values.length + 1}`);
-        values.push(value);
+    for (const field of allowedFields) {
+        if (data[field] !== undefined) {
+            fields.push(`${field} = $${values.length + 1}`);
+            values.push(data[field]);
+        }
     }
 
     if (fields.length === 0) {
