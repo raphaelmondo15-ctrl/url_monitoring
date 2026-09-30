@@ -57,3 +57,10 @@ test("GET /monitors/:id/uptime should return 404 for a non-existent monitor", as
     assert.equal(response.status, 404);
     assert.equal(response.body.error, "Monitor not found");
 });
+
+test("GET /monitors/:id/uptime should reject an invalid ID", async () => {
+    const response = await request(app)
+        .get("/monitors/abc/uptime");
+
+    assert.equal(response.status, 400);
+});
