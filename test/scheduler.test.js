@@ -77,3 +77,76 @@ test("checkMonitor should record a failed check and open an incident", async () 
         });
     }
 });
+
+test("checkMonitor should resolve an open incident when the monitor recovers", async () => {
+    const server = http.createServer((req, res) => {
+        res.writeHead(200, {
+            "Content-Type": "text/plain"
+        });
+
+        res.end("OK");
+    });
+
+    await new Promise((resolve) => {
+        server.listen(0, "127.0.0.1", resolve);
+    });
+
+    const { port } = server.address();
+
+    try {
+        const monitorResult = await pool.query(
+            `INSERT INTO monitors (
+                name,
+                url,
+                interval_seconds,
+                expected_status
+            )
+            VALUES ($1, $2, $3, $4)
+            RETURNING *`,
+            [
+                "Scheduler Recovery Test",
+                `http://127.0.0.1:${port}`,
+                10,
+                200
+            ]
+        );
+
+        const monitor = monitorResult.rows[0];
+
+        const incidentResult = await pool.query(
+            `INSERT INTO incidents (
+                monitor_id,
+                cause
+            )
+            VALUES ($1, $2)
+            RETURNING *`,
+            [
+                monitor.id,
+                "Previous server error"
+            ]
+        );
+
+        const incident = incidentResult.rows[0];
+
+        const check = await checkMonitor(monitor);
+
+        assert.equal(check.ok, true);
+        assert.equal(check.status_code, 200);
+
+        const resolvedIncidentResult = await pool.query(
+            `
+            SELECT *
+            FROM incidents
+            WHERE id = $1
+        `,
+            [incident.id]
+        );
+
+        assert.equal(resolvedIncidentResult.rows.length, 1);
+        assert.ok(resolvedIncidentResult.rows[0].resolved_at);
+    } finally {
+        await new Promise((resolve) => {
+            server.close(resolve);
+        });
+    }
+});
