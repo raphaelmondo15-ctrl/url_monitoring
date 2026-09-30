@@ -1,6 +1,7 @@
 import { getChecksByMonitorId } from "../services/check.service.js";
 import { getMonitorById } from "../services/monitor.service.js";
 import idSchema from "../schemas/id.schema.js";
+import { paginationSchema } from "../schemas/pagination.schema.js";
 
 export async function getMonitorChecks(req, res, next) {
     try {
@@ -14,13 +15,7 @@ if (!monitor) {
     });
 }
 
-        const after = req.query.after !== undefined
-            ? Number(req.query.after)
-            : undefined;
-
-        const limit = req.query.limit !== undefined
-            ? Number(req.query.limit)
-            : 20;
+        const { after, limit } = paginationSchema.parse(req.query);
 
         const result = await getChecksByMonitorId(
             monitorId,

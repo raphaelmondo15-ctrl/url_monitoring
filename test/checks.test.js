@@ -135,3 +135,10 @@ test("GET /monitors/:id/checks.csv should return 404 for a non-existent monitor"
     assert.equal(response.status, 404);
     assert.equal(response.body.error, "Monitor not found");
 });
+
+test("GET /monitors/:id/checks should reject an invalid limit", async () => {
+    const response = await request(app)
+        .get("/monitors/1/checks?limit=abc");
+
+    assert.equal(response.status, 400);
+});
