@@ -2,6 +2,7 @@ import { createMonitorSchema } from "../schemas/monitor.schema.js";
 import * as monitorService from "../services/monitor.service.js";
 import { paginationSchema } from "../schemas/pagination.schema.js";
 import { updateMonitorSchema } from "../schemas/monitor.schema.js";
+import idSchema from "../schemas/id.schema.js";
 
 export async function createMonitor(req, res, next) {
     try {
@@ -41,13 +42,7 @@ export async function getMonitors(req, res, next) {
 
 export async function getMonitorById(req, res, next) {
     try {
-        const id = Number(req.params.id);
-
-        if (!Number.isInteger(id) || id <= 0) {
-            return res.status(400).json({
-                error: "Invalid monitor ID",
-            });
-        }
+        const id = idSchema.parse(Number(req.params.id));
 
         const monitor = await monitorService.getMonitorById(id);
 
@@ -65,13 +60,7 @@ export async function getMonitorById(req, res, next) {
 
 export async function updateMonitor(req, res, next) {
     try {
-        const id = Number(req.params.id);
-
-        if (!Number.isInteger(id) || id <= 0) {
-            return res.status(400).json({
-                error: "Invalid monitor ID",
-            });
-        }
+        const id = idSchema.parse(Number(req.params.id));
 
         const parsed = updateMonitorSchema.safeParse(req.body);
 
@@ -100,13 +89,7 @@ export async function updateMonitor(req, res, next) {
 
 export async function deleteMonitor(req, res, next) {
     try {
-        const id = Number(req.params.id);
-
-        if (!Number.isInteger(id) || id <= 0) {
-            return res.status(400).json({
-                error: "Invalid monitor ID",
-            });
-        }
+        const id = idSchema.parse(Number(req.params.id));
 
         const monitor = await monitorService.deleteMonitor(id);
 
