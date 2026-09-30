@@ -128,3 +128,10 @@ test("GET /monitors/:id/checks.csv should export check history as CSV", async ()
     assert.match(response.text, /false,500,300,"Server error"/);
 });
 
+test("GET /monitors/:id/checks.csv should return 404 for a non-existent monitor", async () => {
+    const response = await request(app)
+        .get("/monitors/999999/checks.csv");
+
+    assert.equal(response.status, 404);
+    assert.equal(response.body.error, "Monitor not found");
+});

@@ -37,6 +37,14 @@ export async function exportMonitorChecksCsv(req, res, next) {
     try {
         const monitorId = idSchema.parse(Number(req.params.id));
 
+        const monitor = await getMonitorById(monitorId);
+
+if (!monitor) {
+    return res.status(404).json({
+        error: "Monitor not found",
+    });
+}
+
         res.status(200);
         res.setHeader("Content-Type", "text/csv");
         res.setHeader(
