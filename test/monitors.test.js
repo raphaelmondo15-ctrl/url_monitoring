@@ -220,3 +220,10 @@ test("PATCH /monitors/:id should reject an invalid ID", async () => {
 
     assert.strictEqual(response.status, 400);
 });
+
+test("GET /monitors should reject an invalid after cursor", async () => {
+    const response = await request(app)
+        .get("/monitors?after=abc");
+
+    assert.equal(response.status, 400);
+});
