@@ -74,3 +74,59 @@ test("GET /status should exclude inactive monitors", async () => {
     assert.equal(response.status, 200);
     assert.equal(response.body.monitors.length, 0);
 });
+
+test("GET /status should return the latest check for each monitor", async () => {
+    const monitorResult = await pool.query(
+        `INSERT INTO monitors (
+            name,
+            url,
+            interval_seconds,
+            expected_status,
+            is_active
+        )
+        VALUES ($1, $2, $3, $4, $5)
+        RETURNING id`,
+        [
+            "Latest Check Monitor",
+            "https://example.com",
+            60,
+            200,
+            true
+        ]
+    );
+
+    const monitorId = monitorResult.rows[0].id;
+
+    await pool.query(
+        `INSERT INTO checks (
+            monitor_id,
+            ok,
+            status_code,
+            latency_ms,
+            error
+        )
+        VALUES
+            ($1, $2, $3, $4, $5),
+            ($1, $6, $7, $8, $9)`,
+        [
+            monitorId,
+            false,
+            500,
+            200,
+            "Expected status 200, received 500",
+            true,
+            200,
+            100,
+            null
+        ]
+    );
+
+    const response = await request(app)
+        .get("/status");
+
+    assert.equal(response.status, 200);
+    assert.equal(response.body.monitors.length, 1);
+    assert.equal(response.body.monitors[0].id, monitorId);
+    assert.equal(response.body.monitors[0].ok, true);
+    assert.equal(response.body.monitors[0].checked_at !== null, true);
+});
