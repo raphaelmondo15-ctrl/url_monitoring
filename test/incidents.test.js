@@ -133,8 +133,10 @@ test("handleIncident should not create a duplicate open incident", async () => {
         error: "Server error"
     };
 
-    await handleIncident(monitor.id, failedCheck);
-    await handleIncident(monitor.id, failedCheck);
+   await Promise.all([
+    handleIncident(monitor.id, failedCheck),
+    handleIncident(monitor.id, failedCheck),
+]);
 
     const result = await pool.query(
         `

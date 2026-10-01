@@ -31,3 +31,7 @@ CREATE TABLE IF NOT EXISTS incidents (
 
 CREATE INDEX IF NOT EXISTS idx_checks_monitor_checked_at
     ON checks (monitor_id, checked_at);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_one_open_incident_per_monitor
+    ON incidents (monitor_id)
+    WHERE resolved_at IS NULL;    
