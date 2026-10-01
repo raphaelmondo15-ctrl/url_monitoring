@@ -48,3 +48,29 @@ test("GET /status should return active monitors", async () => {
     assert.equal(response.body.monitors[0].name, "Status Test Monitor");
     assert.equal(response.body.monitors[0].ok, null);
 });
+
+test("GET /status should exclude inactive monitors", async () => {
+    await pool.query(
+        `INSERT INTO monitors (
+            name,
+            url,
+            interval_seconds,
+            expected_status,
+            is_active
+        )
+        VALUES ($1, $2, $3, $4, $5)`,
+        [
+            "Inactive Monitor",
+            "https://example.com",
+            60,
+            200,
+            false
+        ]
+    );
+
+    const response = await request(app)
+        .get("/status");
+
+    assert.equal(response.status, 200);
+    assert.equal(response.body.monitors.length, 0);
+});
