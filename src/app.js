@@ -2,6 +2,8 @@ import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
 import { ZodError } from 'zod';
+import swaggerUi from "swagger-ui-express";
+import openapiSpec from "./config/openapi.js";
 import monitorRoutes from './routes/monitor.routes.js';
 import checkRoutes from './routes/check.routes.js';
 import uptimeRoutes from './routes/uptime.routes.js';
@@ -15,6 +17,8 @@ const app = express();
 app.use(helmet());
 app.use(cors());
 app.use(express.json());
+
+app.use("/docs", swaggerUi.serve, swaggerUi.setup(openapiSpec));
 
 app.get("/health", (req, res) => {
   res.status(200).json({ status: "ok" });
