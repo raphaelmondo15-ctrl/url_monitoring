@@ -1,0 +1,165 @@
+import test from "node:test";
+import assert from "node:assert";
+import request from "supertest";
+import app from "../src/app.js";
+import pool from "../src/db/pool.js";
+
+test("GET /monitors/:id/checks should return check history", async () => {
+    const monitorResult = await pool.query(
+        `INSERT INTO monitors (
+            name,
+            url,
+            interval_seconds,
+            expected_status
+        )
+        VALUES ($1, $2, $3, $4)
+        RETURNING *`,
+        [
+            "Check History Test",
+            "https://example.com",
+            60,
+            200
+        ]
+    );
+
+    const monitor = monitorResult.rows[0];
+
+    await pool.query(
+        `INSERT INTO checks (
+            monitor_id,
+            ok,
+            status_code,
+            latency_ms,
+            error
+        )
+        VALUES
+            ($1, true, 200, 120, NULL),
+            ($1, true, 200, 150, NULL),
+            ($1, false, 500, 300, 'Server error')`,
+        [monitor.id]
+    );
+
+    const response = await request(app)
+        .get(`/monitors/${monitor.id}/checks?limit=2`);
+
+    assert.equal(response.status, 200);
+    assert.equal(response.body.items.length, 2);
+    assert.equal(response.body.next_cursor, response.body.items[1].id);
+
+    assert.equal(response.body.items[0].monitor_id, monitor.id);
+
+    const nextResponse = await request(app)
+        .get(`/monitors/${monitor.id}/checks?after=${response.body.next_cursor}&limit=2`);
+
+    assert.equal(nextResponse.status, 200);
+    assert.equal(nextResponse.body.items.length, 1);
+    assert.equal(nextResponse.body.next_cursor, null);
+});
+
+test("GET /monitors/:id/checks should reject an invalid ID", async () => {
+    const response = await request(app)
+        .get("/monitors/abc/checks");
+
+    assert.equal(response.status, 400);
+});
+
+test("GET /monitors/:id/checks should return 404 for a non-existent monitor", async () => {
+    const response = await request(app)
+        .get("/monitors/999999/checks");
+
+    assert.equal(response.status, 404);
+    assert.equal(response.body.error, "Monitor not found");
+});
+
+test("GET /monitors/:id/checks.csv should export check history as CSV", async () => {
+    const monitorResult = await pool.query(
+        `INSERT INTO monitors (
+            name,
+            url,
+            interval_seconds,
+            expected_status
+        )
+        VALUES ($1, $2, $3, $4)
+        RETURNING *`,
+        [
+            "CSV Export Test",
+            "https://example.com",
+            60,
+            200
+        ]
+    );
+
+    const monitor = monitorResult.rows[0];
+
+    await pool.query(
+        `INSERT INTO checks (
+            monitor_id,
+            ok,
+            status_code,
+            latency_ms,
+            error
+        )
+        VALUES
+            ($1, true, 200, 120, NULL),
+            ($1, false, 500, 300, 'Server error')`,
+        [monitor.id]
+    );
+
+    const response = await request(app)
+        .get(`/monitors/${monitor.id}/checks.csv`);
+
+    assert.equal(response.status, 200);
+    assert.match(
+        response.headers["content-type"],
+        /text\/csv/
+    );
+
+    assert.match(
+        response.headers["content-disposition"],
+        /monitor-\d+-checks\.csv/
+    );
+
+    assert.match(
+        response.text,
+        /id,monitor_id,checked_at,ok,status_code,latency_ms,error/
+    );
+
+    assert.match(response.text, /true,200,120/);
+    assert.match(response.text, /false,500,300,"Server error"/);
+});
+
+test("GET /monitors/:id/checks.csv should return 404 for a non-existent monitor", async () => {
+    const response = await request(app)
+        .get("/monitors/999999/checks.csv");
+
+    assert.equal(response.status, 404);
+    assert.equal(response.body.error, "Monitor not found");
+});
+
+test("GET /monitors/:id/checks should reject an invalid limit", async () => {
+    const response = await request(app)
+        .get("/monitors/1/checks?limit=abc");
+
+    assert.equal(response.status, 400);
+});
+
+test("GET /monitors/:id/checks should reject a limit above 100", async () => {
+    const response = await request(app)
+        .get("/monitors/1/checks?limit=101");
+
+    assert.equal(response.status, 400);
+});
+
+test("GET /monitors/:id/checks should reject a limit below 1", async () => {
+    const response = await request(app)
+        .get("/monitors/1/checks?limit=0");
+
+    assert.equal(response.status, 400);
+});
+
+test("GET /monitors/:id/checks should reject an invalid after cursor", async () => {
+    const response = await request(app)
+        .get("/monitors/1/checks?after=abc");
+
+    assert.equal(response.status, 400);
+});
