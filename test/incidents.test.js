@@ -4,6 +4,23 @@ import request from "supertest";
 import pool from "../src/db/pool.js";
 import app from "../src/app.js";
 import { handleIncident } from "../src/services/incident.service.js";
+import {
+    setupTestDatabase,
+    cleanTestDatabase,
+    closeTestDatabase,
+} from "./setup.js";
+
+test.before(async () => {
+    await setupTestDatabase();
+});
+
+test.beforeEach(async () => {
+    await cleanTestDatabase();
+});
+
+test.after(async () => {
+    await closeTestDatabase();
+});
 
 test("GET /incidents should return incident history", async () => {
     const monitorResult = await pool.query(

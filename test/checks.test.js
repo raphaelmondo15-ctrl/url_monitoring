@@ -3,6 +3,28 @@ import assert from "node:assert";
 import request from "supertest";
 import app from "../src/app.js";
 import pool from "../src/db/pool.js";
+import {
+    setupTestDatabase,
+    cleanTestDatabase,
+    closeTestDatabase,
+} from "./setup.js";
+
+test.before(async () => {
+    await setupTestDatabase();
+});
+
+test.beforeEach(async () => {
+    await cleanTestDatabase();
+    await pool.query(
+        `INSERT INTO monitors (name, url)
+        VALUES ($1, $2)`,
+        ["Pagination Test Monitor", "https://example.com"]
+    );
+});
+
+test.after(async () => {
+    await closeTestDatabase();
+});
 
 test("GET /monitors/:id/checks should return check history", async () => {
     const monitorResult = await pool.query(
