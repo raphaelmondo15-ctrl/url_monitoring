@@ -209,15 +209,8 @@ const openapiSpec = {
                     },
                 ],
                 responses: {
-                    200: {
+                    204: {
                         description: "Monitor deleted successfully",
-                        content: {
-                            "application/json": {
-                                schema: {
-                                    $ref: "#/components/schemas/Monitor",
-                                },
-                            },
-                        },
                     },
                     400: {
                         $ref: "#/components/responses/ValidationError",
@@ -341,24 +334,27 @@ const openapiSpec = {
             get: {
                 tags: ["Incidents"],
                 summary: "List all incidents",
+                parameters: [
+                    {
+                        $ref: "#/components/parameters/IncidentAfter",
+                    },
+                    {
+                        $ref: "#/components/parameters/Limit",
+                    },
+                ],
                 responses: {
                     200: {
                         description: "List of incidents",
                         content: {
                             "application/json": {
                                 schema: {
-                                    type: "object",
-                                    properties: {
-                                        items: {
-                                            type: "array",
-                                            items: {
-                                                $ref: "#/components/schemas/Incident",
-                                            },
-                                        },
-                                    },
+                                    $ref: "#/components/schemas/PaginatedIncidents",
                                 },
                             },
                         },
+                    },
+                    400: {
+                        $ref: "#/components/responses/ValidationError",
                     },
                 },
             },
@@ -372,6 +368,12 @@ const openapiSpec = {
                     {
                         $ref: "#/components/parameters/MonitorId",
                     },
+                    {
+                        $ref: "#/components/parameters/IncidentAfter",
+                    },
+                    {
+                        $ref: "#/components/parameters/Limit",
+                    },
                 ],
                 responses: {
                     200: {
@@ -379,15 +381,7 @@ const openapiSpec = {
                         content: {
                             "application/json": {
                                 schema: {
-                                    type: "object",
-                                    properties: {
-                                        items: {
-                                            type: "array",
-                                            items: {
-                                                $ref: "#/components/schemas/Incident",
-                                            },
-                                        },
-                                    },
+                                    $ref: "#/components/schemas/PaginatedIncidents",
                                 },
                             },
                         },
@@ -453,6 +447,17 @@ const openapiSpec = {
                     type: "integer",
                     minimum: 1,
                     example: 10,
+                },
+            },
+
+            IncidentAfter: {
+                name: "after",
+                in: "query",
+                required: false,
+                description: "Opaque cursor for the last incident from the previous page",
+                schema: {
+                    type: "string",
+                    pattern: "^[A-Za-z0-9_-]+$",
                 },
             },
 
@@ -707,6 +712,23 @@ const openapiSpec = {
                         type: "integer",
                         nullable: true,
                         example: 10,
+                    },
+                },
+            },
+
+            PaginatedIncidents: {
+                type: "object",
+                properties: {
+                    items: {
+                        type: "array",
+                        items: {
+                            $ref: "#/components/schemas/Incident",
+                        },
+                    },
+                    next_cursor: {
+                        type: "string",
+                        nullable: true,
+                        description: "Opaque cursor to retrieve the next page",
                     },
                 },
             },

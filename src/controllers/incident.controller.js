@@ -1,12 +1,14 @@
 import { getIncidents, getIncidentsByMonitorId } from "../services/incident.service.js";
 import { getMonitorById } from "../services/monitor.service.js";
 import idSchema from "../schemas/id.schema.js";
+import { incidentPaginationSchema } from "../schemas/incident-pagination.schema.js";
 
 export async function getAllIncidents(req, res, next) {
     try {
-        const incidents = await getIncidents();
+        const pagination = incidentPaginationSchema.parse(req.query);
+        const result = await getIncidents(pagination);
 
-        res.status(200).json({ items: incidents });
+        res.status(200).json(result);
     } catch (error) {
         next(error);
     }
@@ -24,11 +26,10 @@ if (!monitor) {
     });
 }
 
-        const incidents = await getIncidentsByMonitorId(monitorId);
+        const pagination = incidentPaginationSchema.parse(req.query);
+        const result = await getIncidentsByMonitorId(monitorId, pagination);
 
-        res.status(200).json({
-            items: incidents
-        });
+        res.status(200).json(result);
     } catch (error) {
         next(error);
     }

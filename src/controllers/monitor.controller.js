@@ -99,7 +99,7 @@ export async function deleteMonitor(req, res, next) {
             });
         }
 
-        res.status(200).json(monitor);
+        res.sendStatus(204);
     } catch (error) {
         next(error);
     }

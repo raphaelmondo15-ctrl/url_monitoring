@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert";
 import request from "supertest";
 import app from "../src/app.js";
+import pool from "../src/db/pool.js";
 import {
     setupTestDatabase,
     cleanTestDatabase,
@@ -226,6 +227,38 @@ test("DELETE /monitors/:id should reject an invalid ID", async () => {
         .delete("/monitors/abc");
 
     assert.strictEqual(response.status, 400);
+});
+
+test("DELETE /monitors/:id should return 404 for a non-existent monitor", async () => {
+    const response = await request(app)
+        .delete("/monitors/999999");
+
+    assert.strictEqual(response.status, 404);
+    assert.deepStrictEqual(response.body, {
+        error: "Monitor not found",
+    });
+});
+
+test("DELETE /monitors/:id should return 204 and remove the monitor", async () => {
+    const createResponse = await request(app)
+        .post("/monitors")
+        .send({
+            name: "Delete Test Monitor",
+            url: "https://example.com",
+        });
+    const monitorId = createResponse.body.id;
+
+    const response = await request(app)
+        .delete(`/monitors/${monitorId}`);
+
+    assert.strictEqual(response.status, 204);
+    assert.strictEqual(response.text, "");
+
+    const result = await pool.query(
+        "SELECT id FROM monitors WHERE id = $1",
+        [monitorId]
+    );
+    assert.strictEqual(result.rows.length, 0);
 });
 
 test("GET /monitors should reject an invalid after cursor", async () => {

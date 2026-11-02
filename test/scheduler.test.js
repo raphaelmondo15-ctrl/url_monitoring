@@ -9,7 +9,7 @@ const {
     setupTestDatabase,
     cleanTestDatabase,
     closeTestDatabase,
-} = await import("../test-support/database.js");
+} = await import("./setup.js");
 const { runDueChecks } = await import("../src/scheduler/monitor.scheduler.js");
 
 const servers = new Set();
@@ -96,7 +96,11 @@ test.afterEach(async () => {
 });
 
 test.after(async () => {
-    await closeTestDatabase();
+    try {
+        await closeTestDatabase();
+    } finally {
+        await pool.end();
+    }
 });
 
 test("runDueChecks checks a new monitor and skips it until due", async () => {
