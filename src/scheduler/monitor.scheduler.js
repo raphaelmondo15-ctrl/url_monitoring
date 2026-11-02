@@ -3,6 +3,31 @@ import { handleIncident } from "../services/incident.service.js";
 import { getActiveMonitors } from "../services/monitor.service.js";
 import { CHECK_TIMEOUT_MS } from "../config/env.js";
 
+const nextCheckTimes = new Map();
+const checksInProgress = new Set();
+const SCHEDULER_TICK_MS = 1000;
+
+function timestampMilliseconds(value) {
+    if (value == null) {
+        return null;
+    }
+
+    const timestamp = new Date(value).getTime();
+    return Number.isNaN(timestamp) ? null : timestamp;
+}
+
+function scheduleFromLastCheck(monitor) {
+    const lastCheckedAt = timestampMilliseconds(monitor.last_checked_at);
+
+    return {
+        intervalSeconds: monitor.interval_seconds,
+        lastCheckedAt,
+        nextDueAt: lastCheckedAt === null
+            ? Number.NEGATIVE_INFINITY
+            : lastCheckedAt + monitor.interval_seconds * 1000,
+    };
+}
+
 export async function checkMonitor(monitor) {
     const startedAt = Date.now();
 
@@ -51,37 +76,61 @@ export async function checkMonitor(monitor) {
     return check;
 }
 
-export function startScheduler() {
-    const timer = setInterval(async () => {
+export async function runDueChecks(now = Date.now()) {
+    const monitors = await getActiveMonitors();
+    const activeMonitorIds = new Set(monitors.map((monitor) => monitor.id));
+
+    for (const monitorId of nextCheckTimes.keys()) {
+        if (!activeMonitorIds.has(monitorId)) {
+            nextCheckTimes.delete(monitorId);
+        }
+    }
+
+    for (const monitor of monitors) {
+        const monitorId = monitor.id;
+        let schedule = nextCheckTimes.get(monitorId);
+        const lastCheckedAt = timestampMilliseconds(monitor.last_checked_at);
+
+        if (
+            !schedule
+            || schedule.intervalSeconds !== monitor.interval_seconds
+            || schedule.lastCheckedAt !== lastCheckedAt
+        ) {
+            schedule = scheduleFromLastCheck(monitor);
+            nextCheckTimes.set(monitorId, schedule);
+        }
+
+        if (now < schedule.nextDueAt || checksInProgress.has(monitorId)) {
+            continue;
+        }
+
+        schedule.nextDueAt = now + monitor.interval_seconds * 1000;
+        checksInProgress.add(monitorId);
+
         try {
-            const monitors = await getActiveMonitors();
-            const now = Date.now();
+            const check = await checkMonitor(monitor);
+            const checkedAt = timestampMilliseconds(check.checked_at);
+            const currentSchedule = nextCheckTimes.get(monitorId);
 
-            for (const monitor of monitors) {
-                const nextCheck = nextCheckTimes.get(monitor.id) ?? 0;
-
-                if (now < nextCheck) {
-                    continue;
-                }
-
-                nextCheckTimes.set(
-                    monitor.id,
-                    now + monitor.interval_seconds * 1000
-                );
-
-                try {
-                    await checkMonitor(monitor);
-                } catch (error) {
-                    console.error(
-                        `Monitor ${monitor.id} check failed:`,
-                        error.message
-                    );
-                }
+            if (checkedAt !== null && currentSchedule) {
+                currentSchedule.lastCheckedAt = checkedAt;
+                currentSchedule.nextDueAt = checkedAt
+                    + currentSchedule.intervalSeconds * 1000;
             }
         } catch (error) {
-            console.error("Scheduler tick failed:", error.message);
+            console.error(`Monitor ${monitorId} check failed:`, error.message);
+        } finally {
+            checksInProgress.delete(monitorId);
         }
-    }, 1000);
+    }
+}
+
+export function startScheduler(tickIntervalMs = SCHEDULER_TICK_MS) {
+    const timer = setInterval(() => {
+        runDueChecks().catch((error) => {
+            console.error("Scheduler tick failed:", error.message);
+        });
+    }, tickIntervalMs);
 
     return timer;
 }
