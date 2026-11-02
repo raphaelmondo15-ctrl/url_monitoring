@@ -31,7 +31,7 @@ app.use("/monitors", monitorIncidentRoutes);
 app.use("/incidents", incidentRoutes);
 app.use("/status", statusRoutes);
 
-app.use((err, req, res, next) => {
+export function errorHandler(err, req, res, next) {
   if (err instanceof ZodError) {
     return res.status(400).json({
       error: "Validation failed",
@@ -42,8 +42,10 @@ app.use((err, req, res, next) => {
   console.error(err);
   res.status(500).json({
     error: "Internal Server Error",
-    message: err.message
+    message: "An unexpected error occurred"
   });
-});
+}
+
+app.use(errorHandler);
 
 export default app;
