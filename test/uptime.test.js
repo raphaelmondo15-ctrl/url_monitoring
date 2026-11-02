@@ -3,6 +3,23 @@ import assert from "node:assert";
 import request from "supertest";
 import pool from "../src/db/pool.js";
 import app from "../src/app.js";
+import {
+    setupTestDatabase,
+    cleanTestDatabase,
+    closeTestDatabase,
+} from "../test-support/database.js";
+
+test.before(async () => {
+    await setupTestDatabase();
+});
+
+test.beforeEach(async () => {
+    await cleanTestDatabase();
+});
+
+test.after(async () => {
+    await closeTestDatabase();
+});
 
 test("GET /monitors/:id/uptime should return uptime and latency metrics", async () => {
     const monitorResult = await pool.query(

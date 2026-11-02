@@ -6,7 +6,7 @@ import {
     setupTestDatabase,
     cleanTestDatabase,
     closeTestDatabase,
-} from "./setup.js";
+} from "../test-support/database.js";
 
 test.before(async () => {
     await setupTestDatabase();

@@ -8,7 +8,7 @@ import {
     setupTestDatabase,
     cleanTestDatabase,
     closeTestDatabase,
-} from "./setup.js";
+} from "../test-support/database.js";
 
 test.before(async () => {
     await setupTestDatabase();
@@ -90,9 +90,10 @@ test("GET /monitors/:id/incidents should return incidents for a monitor", async 
     await pool.query(
         `INSERT INTO incidents (
             monitor_id,
-            cause
+            cause,
+            resolved_at
         )
-        VALUES ($1, $2), ($1, $3)`,
+        VALUES ($1, $2, now()), ($1, $3, NULL)`,
         [
             monitor.id,
             "Server error",

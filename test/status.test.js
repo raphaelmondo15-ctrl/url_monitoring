@@ -3,7 +3,7 @@ import assert from "node:assert";
 import request from "supertest";
 import app from "../src/app.js";
 import pool from "../src/db/pool.js";
-import { setupTestDatabase, cleanTestDatabase, closeTestDatabase } from "./setup.js";
+import { setupTestDatabase, cleanTestDatabase, closeTestDatabase } from "../test-support/database.js";
 
 test.before(async () => {
     await setupTestDatabase();
