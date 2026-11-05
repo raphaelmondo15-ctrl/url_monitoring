@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - feature/url_monitoring
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: pulse_test
+          POSTGRES_PASSWORD: pulse_test
+          POSTGRES_DB: url_monitoring_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U pulse_test -d url_monitoring_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - name: Configure disposable local test database
+        run: printf 'DATABASE_URL=postgresql://pulse_test:pulse_test@localhost:5432/url_monitoring_test\n' > .env.test
+      - run: npm test

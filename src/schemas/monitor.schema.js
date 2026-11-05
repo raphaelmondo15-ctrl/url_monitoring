@@ -33,6 +33,8 @@ export const createMonitorSchema = z.object({
     expected_status: z.coerce
         .number()
         .int()
+        .min(100)
+        .max(599)
         .default(200),
 });
 
@@ -70,6 +72,8 @@ export const updateMonitorSchema = z.object({
     expected_status: z.coerce
         .number()
         .int()
+        .min(100)
+        .max(599)
         .optional(),
 
     is_active: z.boolean().optional(),

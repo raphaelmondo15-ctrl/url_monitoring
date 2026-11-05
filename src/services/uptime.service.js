@@ -20,9 +20,9 @@ export async function getMonitorUptime(monitorId, window) {
     const row = result.rows[0];
 
     return {
-        uptime_percentage: row.uptime_percentage
-            ? Number(row.uptime_percentage)
-            : 0,
+        uptime_percentage: row.uptime_percentage === null
+            ? null
+            : Number(row.uptime_percentage),
         average_latency_ms: row.average_latency_ms
             ? Number(row.average_latency_ms)
             : 0,

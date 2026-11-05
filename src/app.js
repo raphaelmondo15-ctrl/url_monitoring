@@ -20,7 +20,7 @@ app.use(express.json());
 
 app.use("/docs", swaggerUi.serve, swaggerUi.setup(openapiSpec));
 
-app.get("/health", (req, res) => {
+app.get("/health", (_req, res) => {
   res.status(200).json({ status: "ok" });
 });
 
@@ -31,7 +31,7 @@ app.use("/monitors", monitorIncidentRoutes);
 app.use("/incidents", incidentRoutes);
 app.use("/status", statusRoutes);
 
-export function errorHandler(err, req, res, next) {
+export function errorHandler(err, _req, res, next) {
   if (err instanceof ZodError) {
     return res.status(400).json({
       error: "Validation failed",

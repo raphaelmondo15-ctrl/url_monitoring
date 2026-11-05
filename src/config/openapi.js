@@ -101,6 +101,9 @@ const openapiSpec = {
                     400: {
                         $ref: "#/components/responses/ValidationError",
                     },
+                    500: {
+                        $ref: "#/components/responses/InternalError",
+                    },
                 },
             },
 
@@ -128,6 +131,9 @@ const openapiSpec = {
                     },
                     400: {
                         $ref: "#/components/responses/ValidationError",
+                    },
+                    500: {
+                        $ref: "#/components/responses/InternalError",
                     },
                 },
             },
@@ -158,6 +164,9 @@ const openapiSpec = {
                     },
                     404: {
                         $ref: "#/components/responses/NotFound",
+                    },
+                    500: {
+                        $ref: "#/components/responses/InternalError",
                     },
                 },
             },
@@ -195,7 +204,17 @@ const openapiSpec = {
                         $ref: "#/components/responses/ValidationError",
                     },
                     404: {
-                        $ref: "#/components/responses/NotFound",
+                        description: "Monitor not found, or the update contains no recognized fields.",
+                        content: {
+                            "application/json": {
+                                schema: {
+                                    $ref: "#/components/schemas/Error",
+                                },
+                            },
+                        },
+                    },
+                    500: {
+                        $ref: "#/components/responses/InternalError",
                     },
                 },
             },
@@ -217,6 +236,9 @@ const openapiSpec = {
                     },
                     404: {
                         $ref: "#/components/responses/NotFound",
+                    },
+                    500: {
+                        $ref: "#/components/responses/InternalError",
                     },
                 },
             },
@@ -254,6 +276,9 @@ const openapiSpec = {
                     404: {
                         $ref: "#/components/responses/NotFound",
                     },
+                    500: {
+                        $ref: "#/components/responses/InternalError",
+                    },
                 },
             },
         },
@@ -269,7 +294,7 @@ const openapiSpec = {
                 ],
                 responses: {
                     200: {
-                        description: "CSV export of monitor checks",
+                        description: "CSV export of up to 10,000 monitor checks, ordered by ID ascending.",
                         content: {
                             "text/csv": {
                                 schema: {
@@ -279,12 +304,24 @@ const openapiSpec = {
                                 },
                             },
                         },
+                        headers: {
+                            "Content-Disposition": {
+                                description: "Attachment filename for the CSV download",
+                                schema: {
+                                    type: "string",
+                                    example: 'attachment; filename="monitor-1-checks.csv"',
+                                },
+                            },
+                        },
                     },
                     400: {
                         $ref: "#/components/responses/ValidationError",
                     },
                     404: {
                         $ref: "#/components/responses/NotFound",
+                    },
+                    500: {
+                        $ref: "#/components/responses/InternalError",
                     },
                 },
             },
@@ -302,9 +339,11 @@ const openapiSpec = {
                         name: "window",
                         in: "query",
                         required: false,
-                        description: "Time window for the uptime calculation",
+                        description: "Relative time window; accepts a non-negative integer followed by s, m, h, or d. Defaults to 24h.",
                         schema: {
                             type: "string",
+                            pattern: "^\\d+[smhd]$",
+                            default: "24h",
                             example: "24h",
                         },
                     },
@@ -325,6 +364,9 @@ const openapiSpec = {
                     },
                     404: {
                         $ref: "#/components/responses/NotFound",
+                    },
+                    500: {
+                        $ref: "#/components/responses/InternalError",
                     },
                 },
             },
@@ -355,6 +397,9 @@ const openapiSpec = {
                     },
                     400: {
                         $ref: "#/components/responses/ValidationError",
+                    },
+                    500: {
+                        $ref: "#/components/responses/InternalError",
                     },
                 },
             },
@@ -392,6 +437,9 @@ const openapiSpec = {
                     404: {
                         $ref: "#/components/responses/NotFound",
                     },
+                    500: {
+                        $ref: "#/components/responses/InternalError",
+                    },
                 },
             },
         },
@@ -419,6 +467,9 @@ const openapiSpec = {
                             },
                         },
                     },
+                    500: {
+                        $ref: "#/components/responses/InternalError",
+                    },
                 },
             },
         },
@@ -442,7 +493,7 @@ const openapiSpec = {
                 name: "after",
                 in: "query",
                 required: false,
-                description: "Return records after this ID",
+                description: "Return records with IDs greater than this ID. Results are ordered by ascending ID.",
                 schema: {
                     type: "integer",
                     minimum: 1,
@@ -454,9 +505,10 @@ const openapiSpec = {
                 name: "after",
                 in: "query",
                 required: false,
-                description: "Opaque cursor for the last incident from the previous page",
+                description: "Opaque base64url cursor from the previous page; incident pages are ordered by started_at and ID descending.",
                 schema: {
                     type: "string",
+                    maxLength: 256,
                     pattern: "^[A-Za-z0-9_-]+$",
                 },
             },
@@ -479,6 +531,7 @@ const openapiSpec = {
         schemas: {
             Monitor: {
                 type: "object",
+                required: ["id", "name", "url", "interval_seconds", "expected_status", "is_active", "created_at"],
                 properties: {
                     id: {
                         type: "integer",
@@ -486,11 +539,14 @@ const openapiSpec = {
                     },
                     name: {
                         type: "string",
+                        minLength: 1,
+                        maxLength: 120,
                         example: "Google",
                     },
                     url: {
                         type: "string",
                         format: "uri",
+                        description: "Must use the http or https scheme.",
                         example: "https://www.google.com",
                     },
                     interval_seconds: {
@@ -499,6 +555,8 @@ const openapiSpec = {
                     },
                     expected_status: {
                         type: "integer",
+                        minimum: 100,
+                        maximum: 599,
                         example: 200,
                     },
                     is_active: {
@@ -518,12 +576,14 @@ const openapiSpec = {
                 properties: {
                     name: {
                         type: "string",
+                        minLength: 1,
                         maxLength: 120,
                         example: "Google",
                     },
                     url: {
                         type: "string",
                         format: "uri",
+                        description: "Must use the http or https scheme.",
                         example: "https://www.google.com",
                     },
                     interval_seconds: {
@@ -535,6 +595,8 @@ const openapiSpec = {
                     },
                     expected_status: {
                         type: "integer",
+                        minimum: 100,
+                        maximum: 599,
                         default: 200,
                         example: 200,
                     },
@@ -546,11 +608,13 @@ const openapiSpec = {
                 properties: {
                     name: {
                         type: "string",
+                        minLength: 1,
                         maxLength: 120,
                     },
                     url: {
                         type: "string",
                         format: "uri",
+                        description: "Must use the http or https scheme.",
                     },
                     interval_seconds: {
                         type: "integer",
@@ -559,6 +623,8 @@ const openapiSpec = {
                     },
                     expected_status: {
                         type: "integer",
+                        minimum: 100,
+                        maximum: 599,
                     },
                     is_active: {
                         type: "boolean",
@@ -568,6 +634,7 @@ const openapiSpec = {
 
             Check: {
                 type: "object",
+                required: ["id", "monitor_id", "checked_at", "ok", "status_code", "latency_ms", "error"],
                 properties: {
                     id: {
                         type: "integer",
@@ -605,6 +672,7 @@ const openapiSpec = {
 
             Incident: {
                 type: "object",
+                required: ["id", "monitor_id", "started_at", "resolved_at", "cause"],
                 properties: {
                     id: {
                         type: "integer",
@@ -633,9 +701,12 @@ const openapiSpec = {
 
             UptimeReport: {
                 type: "object",
+                required: ["uptime_percentage", "average_latency_ms", "p95_latency_ms"],
                 properties: {
                     uptime_percentage: {
                         type: "number",
+                        nullable: true,
+                        description: "Null when no checks are available in the requested window",
                         example: 99.5,
                     },
                     average_latency_ms: {
@@ -651,6 +722,7 @@ const openapiSpec = {
 
             StatusMonitor: {
                 type: "object",
+                required: ["id", "name", "url", "is_active", "ok", "checked_at"],
                 properties: {
                     id: {
                         type: "integer",
@@ -684,6 +756,7 @@ const openapiSpec = {
 
             PaginatedMonitors: {
                 type: "object",
+                required: ["items", "next_cursor"],
                 properties: {
                     items: {
                         type: "array",
@@ -701,6 +774,7 @@ const openapiSpec = {
 
             PaginatedChecks: {
                 type: "object",
+                required: ["items", "next_cursor"],
                 properties: {
                     items: {
                         type: "array",
@@ -718,6 +792,7 @@ const openapiSpec = {
 
             PaginatedIncidents: {
                 type: "object",
+                required: ["items", "next_cursor"],
                 properties: {
                     items: {
                         type: "array",
@@ -735,12 +810,74 @@ const openapiSpec = {
 
             Error: {
                 type: "object",
+                required: ["error"],
                 properties: {
                     error: {
                         type: "string",
                         example: "Monitor not found",
                     },
+                    message: {
+                        type: "string",
+                        example: "An unexpected error occurred",
+                    },
                 },
+            },
+
+            ValidationErrorBody: {
+                oneOf: [
+                    {
+                        type: "object",
+                        required: ["error", "details"],
+                        properties: {
+                            error: {
+                                type: "string",
+                                example: "Validation failed",
+                            },
+                            details: {
+                                type: "array",
+                                items: {
+                                    type: "object",
+                                    properties: {
+                                        code: { type: "string" },
+                                        path: {
+                                            type: "array",
+                                            items: {
+                                                oneOf: [
+                                                    { type: "string" },
+                                                    { type: "integer" },
+                                                ],
+                                            },
+                                        },
+                                        message: { type: "string" },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                    {
+                        type: "object",
+                        required: ["error"],
+                        properties: {
+                            error: {
+                                type: "object",
+                                required: ["formErrors", "fieldErrors"],
+                                properties: {
+                                    formErrors: {
+                                        type: "array",
+                                        items: { type: "string" },
+                                    },
+                                    fieldErrors: {
+                                        type: "object",
+                                        additionalProperties: {
+                                            type: "array",
+                                            items: { type: "string" },
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                ],
             },
         },
 
@@ -750,7 +887,7 @@ const openapiSpec = {
                 content: {
                     "application/json": {
                         schema: {
-                            $ref: "#/components/schemas/Error",
+                            $ref: "#/components/schemas/ValidationErrorBody",
                         },
                     },
                 },
@@ -758,6 +895,17 @@ const openapiSpec = {
 
             NotFound: {
                 description: "Resource not found",
+                content: {
+                    "application/json": {
+                        schema: {
+                            $ref: "#/components/schemas/Error",
+                        },
+                    },
+                },
+            },
+
+            InternalError: {
+                description: "An unexpected error occurred. Internal details are not exposed.",
                 content: {
                     "application/json": {
                         schema: {

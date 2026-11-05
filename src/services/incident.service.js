@@ -7,6 +7,14 @@ export async function handleIncident(monitorId, check) {
     try {
         await client.query("BEGIN");
 
+        await client.query(
+            `SELECT id
+             FROM monitors
+             WHERE id = $1
+             FOR UPDATE`,
+            [monitorId]
+        );
+
         const result = await client.query(
             `SELECT *
              FROM incidents
@@ -50,7 +58,13 @@ export async function handleIncident(monitorId, check) {
 function createIncidentPage(rows, limit) {
     const hasMore = rows.length > limit;
     const pageRows = hasMore ? rows.slice(0, limit) : rows;
-    const items = pageRows.map(({ cursor_started_at, ...incident }) => incident);
+    const items = pageRows.map((incident) => ({
+        id: incident.id,
+        monitor_id: incident.monitor_id,
+        started_at: incident.started_at,
+        resolved_at: incident.resolved_at,
+        cause: incident.cause,
+    }));
     const lastRow = pageRows.at(-1);
 
     return {

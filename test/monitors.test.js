@@ -87,6 +87,35 @@ test("POST /monitors should use default values", async () => {
     assert.strictEqual(response.body.expected_status, 200);
 });
 
+test("POST /monitors should accept expected_status boundary values", async () => {
+    for (const expectedStatus of [100, 599]) {
+        const response = await request(app)
+            .post("/monitors")
+            .send({
+                name: `Boundary Monitor ${expectedStatus}`,
+                url: "https://example.com",
+                expected_status: expectedStatus,
+            });
+
+        assert.strictEqual(response.status, 201);
+        assert.strictEqual(response.body.expected_status, expectedStatus);
+    }
+});
+
+test("POST /monitors should reject out-of-range and decimal expected_status", async () => {
+    for (const expectedStatus of [99, 600, 200.5]) {
+        const response = await request(app)
+            .post("/monitors")
+            .send({
+                name: `Invalid Status Monitor ${expectedStatus}`,
+                url: "https://example.com",
+                expected_status: expectedStatus,
+            });
+
+        assert.strictEqual(response.status, 400);
+    }
+});
+
 test("GET /monitors should return a paginated list", async () => {
     await request(app)
         .post("/monitors")
@@ -181,6 +210,43 @@ test("PATCH /monitors/:id should update a monitor", async () => {
     assert.strictEqual(response.body.interval_seconds, 120);
     assert.strictEqual(response.body.url, "https://example.com");
     assert.strictEqual(response.body.expected_status, 200);
+});
+
+test("PATCH /monitors/:id should accept expected_status boundary values", async () => {
+    const createResponse = await request(app)
+        .post("/monitors")
+        .send({
+            name: "Status Boundary Monitor",
+            url: "https://example.com",
+        });
+    const monitorId = createResponse.body.id;
+
+    for (const expectedStatus of [100, 599]) {
+        const response = await request(app)
+            .patch(`/monitors/${monitorId}`)
+            .send({ expected_status: expectedStatus });
+
+        assert.strictEqual(response.status, 200);
+        assert.strictEqual(response.body.expected_status, expectedStatus);
+    }
+});
+
+test("PATCH /monitors/:id should reject out-of-range and decimal expected_status", async () => {
+    const createResponse = await request(app)
+        .post("/monitors")
+        .send({
+            name: "Invalid Status Monitor",
+            url: "https://example.com",
+        });
+    const monitorId = createResponse.body.id;
+
+    for (const expectedStatus of [99, 600, 200.5]) {
+        const response = await request(app)
+            .patch(`/monitors/${monitorId}`)
+            .send({ expected_status: expectedStatus });
+
+        assert.strictEqual(response.status, 400);
+    }
 });
 
 test("PATCH /monitors/:id should reject an invalid interval", async () => {

@@ -1,4 +1,9 @@
 import pool from "../db/pool.js";
+import QueryStream from "pg-query-stream";
+import { finished } from "node:stream/promises";
+
+const CSV_EXPORT_LIMIT = 10000;
+const CSV_BATCH_SIZE = 100;
 
 export async function createCheck({
     monitor_id,
@@ -61,4 +66,48 @@ export async function getChecksByMonitorId(monitorId, { after, limit }) {
         items,
         next_cursor: nextCursor
     };
+}
+
+export async function* streamChecksByMonitorId(monitorId, { signal } = {}) {
+    const client = await pool.connect();
+    let queryStream;
+    const abortStream = () => {
+        const error = new Error("CSV export cancelled");
+        error.name = "AbortError";
+        queryStream?.destroy(error);
+    };
+
+    try {
+        queryStream = client.query(new QueryStream(
+            `SELECT *
+             FROM checks
+             WHERE monitor_id = $1
+             ORDER BY id ASC
+             LIMIT $2`,
+            [monitorId, CSV_EXPORT_LIMIT],
+            { batchSize: CSV_BATCH_SIZE }
+        ));
+
+        if (signal?.aborted) {
+            abortStream();
+        } else {
+            signal?.addEventListener("abort", abortStream, { once: true });
+        }
+
+        for await (const check of queryStream) {
+            yield check;
+        }
+    } finally {
+        signal?.removeEventListener("abort", abortStream);
+
+        if (queryStream) {
+            if (!queryStream.destroyed) {
+                queryStream.destroy();
+            }
+
+            await finished(queryStream).catch(() => {});
+        }
+
+        client.release();
+    }
 }

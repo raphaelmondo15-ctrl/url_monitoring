@@ -8,19 +8,20 @@
     "dev": "node --watch src/server.js",
     "db:schema": "node src/sql/run-schema.js",
     "db:seed": "node src/sql/run-seed.js",
+    "lint": "eslint \"src/**/*.js\" \"test/**/*.js\" \"test-support/**/*.js\"",
     "test": "NODE_ENV=test node --test --test-concurrency=1 test/*.test.js",
     "test:watch": "NODE_ENV=test node --test --watch test/*.test.js"
   },
   "keywords": [
-  "url-monitoring",
-  "uptime-monitoring",
-  "status-page",
-  "health-check",
-  "postgresql",
-  "nodejs",
-  "express",
-  "api"
-],
+    "url-monitoring",
+    "uptime-monitoring",
+    "status-page",
+    "health-check",
+    "postgresql",
+    "nodejs",
+    "express",
+    "api"
+  ],
   "author": "Mondo Raphael",
   "license": "ISC",
   "type": "module",
@@ -31,6 +32,7 @@
     "helmet": "^8.3.0",
     "http-errors": "^2.0.1",
     "pg": "^8.23.0",
+    "pg-query-stream": "^4.17.1",
     "pino": "^10.3.1",
     "pino-http": "^11.0.0",
     "swagger-jsdoc": "^6.3.0",
@@ -39,6 +41,9 @@
     "zod": "^4.5.4"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "eslint": "^9.39.5",
+    "globals": "^17.14.0",
     "supertest": "^7.2.2"
   }
 }
