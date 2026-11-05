@@ -2,6 +2,7 @@ import { createCheck } from "../services/check.service.js";
 import { handleIncident } from "../services/incident.service.js";
 import { getActiveMonitors } from "../services/monitor.service.js";
 import { CHECK_TIMEOUT_MS } from "../config/env.js";
+import { SafeRequestError, safeHttpRequest } from "../security/safe-http.js";
 
 const nextCheckTimes = new Map();
 const checksInProgress = new Set();
@@ -28,18 +29,15 @@ function scheduleFromLastCheck(monitor) {
     };
 }
 
-export async function checkMonitor(monitor) {
+export async function checkMonitor(monitor, { httpRequest = safeHttpRequest } = {}) {
     const startedAt = Date.now();
 
     let response;
 
     try {
-        response = await fetch(
-            monitor.url,
-            {
-                signal: AbortSignal.timeout(CHECK_TIMEOUT_MS),
-            }
-        );
+        response = await httpRequest(monitor.url, {
+            timeoutMs: CHECK_TIMEOUT_MS,
+        });
     } catch (error) {
         const latencyMs = Date.now() - startedAt;
 
@@ -49,8 +47,11 @@ export async function checkMonitor(monitor) {
             status_code: null,
             latency_ms: latencyMs,
             error: error.name === "TimeoutError"
+                || error.name === "AbortError"
                 ? "Request timed out"
-                : error.message
+                : error instanceof SafeRequestError
+                    ? "Monitor destination rejected"
+                    : "Monitor request failed"
         });
 
         await handleIncident(monitor.id, check);
@@ -59,16 +60,17 @@ export async function checkMonitor(monitor) {
     }
 
     const latencyMs = Date.now() - startedAt;
-    const ok = response.status === monitor.expected_status;
+    const statusCode = response.statusCode;
+    const ok = statusCode === monitor.expected_status;
 
     const check = await createCheck({
         monitor_id: monitor.id,
         ok,
-        status_code: response.status,
+        status_code: statusCode,
         latency_ms: latencyMs,
         error: ok
             ? null
-            : `Expected status ${monitor.expected_status}, received ${response.status}`
+            : `Expected status ${monitor.expected_status}, received ${statusCode}`
     });
 
     await handleIncident(monitor.id, check);
@@ -76,7 +78,7 @@ export async function checkMonitor(monitor) {
     return check;
 }
 
-export async function runDueChecks(now = Date.now()) {
+export async function runDueChecks(now = Date.now(), { httpRequest = safeHttpRequest } = {}) {
     const monitors = await getActiveMonitors();
     const activeMonitorIds = new Set(monitors.map((monitor) => monitor.id));
 
@@ -108,7 +110,7 @@ export async function runDueChecks(now = Date.now()) {
         checksInProgress.add(monitorId);
 
         try {
-            const check = await checkMonitor(monitor);
+            const check = await checkMonitor(monitor, { httpRequest });
             const checkedAt = timestampMilliseconds(check.checked_at);
             const currentSchedule = nextCheckTimes.get(monitorId);
 

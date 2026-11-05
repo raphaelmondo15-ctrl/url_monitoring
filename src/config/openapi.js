@@ -546,7 +546,7 @@ const openapiSpec = {
                     url: {
                         type: "string",
                         format: "uri",
-                        description: "Must use the http or https scheme.",
+                        description: "Must use HTTP or HTTPS on the standard port, contain no embedded credentials, and resolve only to publicly routable IP addresses.",
                         example: "https://www.google.com",
                     },
                     interval_seconds: {
@@ -583,7 +583,7 @@ const openapiSpec = {
                     url: {
                         type: "string",
                         format: "uri",
-                        description: "Must use the http or https scheme.",
+                        description: "Must use HTTP or HTTPS on the standard port, contain no embedded credentials, and resolve only to publicly routable IP addresses.",
                         example: "https://www.google.com",
                     },
                     interval_seconds: {
@@ -614,7 +614,7 @@ const openapiSpec = {
                     url: {
                         type: "string",
                         format: "uri",
-                        description: "Must use the http or https scheme.",
+                        description: "Must use HTTP or HTTPS on the standard port, contain no embedded credentials, and resolve only to publicly routable IP addresses.",
                     },
                     interval_seconds: {
                         type: "integer",

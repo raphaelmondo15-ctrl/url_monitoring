@@ -50,6 +50,22 @@ test("POST /monitors should reject an invalid URL", async () => {
     assert.strictEqual(response.status, 400);
 });
 
+    test("POST /monitors should reject credentialed, local, and nonstandard-port URLs", async () => {
+        for (const url of [
+            "https://user:password@example.com",
+            "https://@example.com",
+            "http://localhost",
+            "http://127.0.0.1",
+            "http://[::1]",
+            "https://example.com:8443",
+        ]) {
+            const response = await request(app)
+                .post("/monitors")
+                .send({ name: "Rejected URL", url });
+
+            assert.strictEqual(response.status, 400, url);
+        }
+    });
 test("POST /monitors should reject interval below 10 seconds", async () => {
     const response = await request(app)
         .post("/monitors")
@@ -99,6 +115,28 @@ test("POST /monitors should accept expected_status boundary values", async () =>
 
         assert.strictEqual(response.status, 201);
         assert.strictEqual(response.body.expected_status, expectedStatus);
+    }
+});
+
+test("PATCH /monitors/:id should reject credentialed, local, and nonstandard-port URLs", async () => {
+    const createResponse = await request(app)
+        .post("/monitors")
+        .send({ name: "URL Update Policy", url: "https://example.com" });
+    const monitorId = createResponse.body.id;
+
+    for (const url of [
+        "https://user:password@example.com",
+        "https://@example.com",
+        "http://localhost",
+        "http://127.0.0.1",
+        "http://[::1]",
+        "https://example.com:8443",
+    ]) {
+        const response = await request(app)
+            .patch(`/monitors/${monitorId}`)
+            .send({ url });
+
+        assert.strictEqual(response.status, 400, url);
     }
 });
 

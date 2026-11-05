@@ -1,27 +1,12 @@
 import { z } from "zod";
+import { isValidMonitorUrl } from "../security/safe-http.js";
 
 export const createMonitorSchema = z.object({
     name: z.string().min(1).max(120),
 
-    url: z
-        .string()
-        .refine(
-            (value) => {
-                try {
-                    const parsedUrl = new URL(value);
-
-                    return (
-                        parsedUrl.protocol === "http:" ||
-                        parsedUrl.protocol === "https:"
-                    );
-                } catch {
-                    return false;
-                }
-            },
-            {
-                message: "URL must be a valid http or https URL",
-            }
-        ),
+    url: z.string().refine(isValidMonitorUrl, {
+        message: "URL must be a valid HTTP or HTTPS URL with no credentials or non-standard port",
+    }),
 
     interval_seconds: z.coerce
         .number()
@@ -41,26 +26,9 @@ export const createMonitorSchema = z.object({
 export const updateMonitorSchema = z.object({
     name: z.string().min(1).max(120).optional(),
 
-    url: z
-        .string()
-        .refine(
-            (value) => {
-                try {
-                    const parsedUrl = new URL(value);
-
-                    return (
-                        parsedUrl.protocol === "http:" ||
-                        parsedUrl.protocol === "https:"
-                    );
-                } catch {
-                    return false;
-                }
-            },
-            {
-                message: "URL must be a valid http or https URL",
-            }
-        )
-        .optional(),
+    url: z.string().refine(isValidMonitorUrl, {
+        message: "URL must be a valid HTTP or HTTPS URL with no credentials or non-standard port",
+    }).optional(),
 
     interval_seconds: z.coerce
         .number()

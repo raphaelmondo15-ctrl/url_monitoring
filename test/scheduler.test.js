@@ -11,6 +11,19 @@ const {
     closeTestDatabase,
 } = await import("../test-support/database.js");
 const { runDueChecks } = await import("../src/scheduler/monitor.scheduler.js");
+const { SafeRequestError } = await import("../src/security/safe-http.js");
+
+async function localTestHttpRequest(url, { timeoutMs }) {
+    const response = await fetch(url, {
+        signal: AbortSignal.timeout(timeoutMs),
+        redirect: "manual",
+    });
+    return { statusCode: response.status };
+}
+
+function runLocalDueChecks(now) {
+    return runDueChecks(now, { httpRequest: localTestHttpRequest });
+}
 
 const servers = new Set();
 
@@ -110,19 +123,19 @@ test("runDueChecks checks a new monitor and skips it until due", async () => {
     const monitor = await createMonitor(url);
     const now = Date.now();
 
-    await runDueChecks(now);
+    await runLocalDueChecks(now);
 
     let checks = await getChecks(monitor.id);
     assert.equal(checks.length, 1);
     assert.equal(checks[0].ok, true);
     assert.equal(requestCount, 1);
 
-    await runDueChecks(checks[0].checked_at.getTime() + 9999);
+    await runLocalDueChecks(checks[0].checked_at.getTime() + 9999);
     checks = await getChecks(monitor.id);
     assert.equal(checks.length, 1);
     assert.equal(requestCount, 1);
 
-    await runDueChecks(checks[0].checked_at.getTime() + 10000);
+    await runLocalDueChecks(checks[0].checked_at.getTime() + 10000);
     checks = await getChecks(monitor.id);
     assert.equal(checks.length, 2);
     assert.equal(requestCount, 2);
@@ -139,7 +152,7 @@ test("runDueChecks uses persisted check time after scheduler state is empty", as
     const lastCheckedAt = new Date(Date.now() - 15000);
     const monitor = await createMonitor(url, { lastCheckedAt });
 
-    await runDueChecks(Date.now());
+    await runLocalDueChecks(Date.now());
 
     const checks = await getChecks(monitor.id);
     assert.equal(checks.length, 2);
@@ -155,7 +168,7 @@ test("runDueChecks recalculates due time when a monitor interval changes", async
     });
     const monitor = await createMonitor(url);
 
-    await runDueChecks(Date.now());
+    await runLocalDueChecks(Date.now());
     let checks = await getChecks(monitor.id);
     const lastCheckedAt = checks[0].checked_at.getTime();
 
@@ -164,12 +177,12 @@ test("runDueChecks recalculates due time when a monitor interval changes", async
         [monitor.id]
     );
 
-    await runDueChecks(lastCheckedAt + 10000);
+    await runLocalDueChecks(lastCheckedAt + 10000);
     checks = await getChecks(monitor.id);
     assert.equal(checks.length, 1);
     assert.equal(requestCount, 1);
 
-    await runDueChecks(lastCheckedAt + 20000);
+    await runLocalDueChecks(lastCheckedAt + 20000);
     checks = await getChecks(monitor.id);
     assert.equal(checks.length, 2);
     assert.equal(requestCount, 2);
@@ -193,11 +206,11 @@ test("runDueChecks avoids overlapping checks for the same monitor", async () => 
         res.end("OK");
     });
     const monitor = await createMonitor(url);
-    const firstTick = runDueChecks(Date.now());
+    const firstTick = runLocalDueChecks(Date.now());
 
     await requestStarted;
     try {
-        await runDueChecks(Date.now() + 10000);
+        await runLocalDueChecks(Date.now() + 10000);
     } finally {
         releaseResponse();
         await firstTick;
@@ -224,7 +237,7 @@ test("runDueChecks does not check monitors that are not due or inactive", async 
         isActive: false,
     });
 
-    await runDueChecks(Date.now());
+    await runLocalDueChecks(Date.now());
 
     assert.equal((await getChecks(recentCheck.id)).length, 1);
     assert.equal((await getChecks(inactive.id)).length, 0);
@@ -239,7 +252,7 @@ test("runDueChecks opens and resolves incidents through the scheduler", async ()
     });
     const monitor = await createMonitor(url);
 
-    await runDueChecks(Date.now());
+    await runLocalDueChecks(Date.now());
 
     const failedChecks = await getChecks(monitor.id);
     assert.equal(failedChecks.length, 1);
@@ -254,7 +267,7 @@ test("runDueChecks opens and resolves incidents through the scheduler", async ()
     assert.equal(openIncident.rows.length, 1);
 
     statusCode = 200;
-    await runDueChecks(failedChecks[0].checked_at.getTime() + 10000);
+    await runLocalDueChecks(failedChecks[0].checked_at.getTime() + 10000);
 
     const recoveredChecks = await getChecks(monitor.id);
     assert.equal(recoveredChecks.length, 2);
@@ -271,7 +284,7 @@ test("runDueChecks stores timeout failures and opens an incident", async () => {
     const url = await startServer(() => {});
     const monitor = await createMonitor(url);
 
-    await runDueChecks(Date.now());
+    await runLocalDueChecks(Date.now());
 
     const checks = await getChecks(monitor.id);
     assert.equal(checks.length, 1);
@@ -285,4 +298,32 @@ test("runDueChecks stores timeout failures and opens an incident", async () => {
         [monitor.id]
     );
     assert.equal(incidents.rows.length, 1);
+});
+
+test("runDueChecks rejects stored loopback URLs and records a generic failure", async () => {
+    const monitor = await createMonitor("http://127.0.0.1:9/private-service");
+
+    await runDueChecks(Date.now());
+
+    const checks = await getChecks(monitor.id);
+    assert.equal(checks.length, 1);
+    assert.equal(checks[0].ok, false);
+    assert.equal(checks[0].status_code, null);
+    assert.equal(checks[0].error, "Monitor destination rejected");
+    assert.equal(checks[0].error.includes("127.0.0.1"), false);
+});
+
+test("runDueChecks records DNS validation failures without exposing resolver details", async () => {
+    const monitor = await createMonitor("https://dns-failure.example");
+    const httpRequest = async () => {
+        throw new SafeRequestError("private DNS answer: 10.1.2.3");
+    };
+
+    await runDueChecks(Date.now(), { httpRequest });
+
+    const checks = await getChecks(monitor.id);
+    assert.equal(checks.length, 1);
+    assert.equal(checks[0].ok, false);
+    assert.equal(checks[0].error, "Monitor destination rejected");
+    assert.equal(checks[0].error.includes("10.1.2.3"), false);
 });
