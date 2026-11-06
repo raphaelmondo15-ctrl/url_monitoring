@@ -200,7 +200,23 @@ test("incident cursor preserves PostgreSQL microsecond timestamp precision", asy
     assert.equal(secondPage.body.next_cursor, null);
 });
 
+test("incident cursor accepts the PostgreSQL INTEGER maximum ID", async () => {
+    const cursor = Buffer.from(JSON.stringify({
+        started_at: "2026-02-28T10:20:30.123456Z",
+        id: 2147483647,
+    })).toString("base64url");
+
+    const response = await request(app)
+        .get(`/incidents?after=${encodeURIComponent(cursor)}`);
+
+    assert.equal(response.status, 200);
+});
+
 test("incident endpoints reject malformed cursors and invalid limits", async () => {
+    const oversizedIncidentCursor = Buffer.from(JSON.stringify({
+        started_at: "2026-02-28T10:20:30.123456Z",
+        id: 2147483648,
+    })).toString("base64url");
     const malformedCursors = [
         "not-a-cursor",
         "a".repeat(257),
@@ -213,6 +229,7 @@ test("incident endpoints reject malformed cursors and invalid limits", async () 
             started_at: "2026-02-28T10:20:30.123456Z",
             id: 0,
         })).toString("base64url"),
+        oversizedIncidentCursor,
     ];
     const invalidLimits = ["0", "101", "abc"];
 

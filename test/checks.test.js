@@ -369,3 +369,19 @@ test("GET /monitors/:id/checks should reject an invalid after cursor", async () 
 
     assert.equal(response.status, 400);
 });
+
+test("check pagination accepts the maximum cursor and rejects larger values", async () => {
+    const maximumCursor = await request(app)
+        .get("/monitors/1/checks?after=2147483647");
+    assert.equal(maximumCursor.status, 200);
+
+    const oversizedCursor = await request(app)
+        .get("/monitors/1/checks?after=2147483648");
+    assert.equal(oversizedCursor.status, 400);
+
+    for (const invalidCursor of ["0", "-1"]) {
+        const response = await request(app)
+            .get(`/monitors/1/checks?after=${invalidCursor}`);
+        assert.equal(response.status, 400, invalidCursor);
+    }
+});

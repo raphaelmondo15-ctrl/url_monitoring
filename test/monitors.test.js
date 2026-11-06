@@ -223,6 +223,26 @@ test("GET /monitors/:id should reject an invalid ID", async () => {
     assert.strictEqual(response.status, 400);
 });
 
+test("monitor IDs accept the PostgreSQL INTEGER maximum and reject larger values", async () => {
+    const maximumId = await request(app).get("/monitors/2147483647");
+    assert.strictEqual(maximumId.status, 404);
+
+    for (const invalidId of ["abc", "0", "-1", "2147483648"]) {
+        const response = await request(app).get(`/monitors/${invalidId}`);
+        assert.strictEqual(response.status, 400, invalidId);
+    }
+});
+
+test("monitor pagination accepts the maximum cursor and rejects larger values", async () => {
+    const maximumCursor = await request(app).get("/monitors?after=2147483647");
+    assert.strictEqual(maximumCursor.status, 200);
+
+    for (const invalidCursor of ["abc", "0", "-1", "2147483648"]) {
+        const response = await request(app).get(`/monitors?after=${invalidCursor}`);
+        assert.strictEqual(response.status, 400, invalidCursor);
+    }
+});
+
 test("PATCH /monitors/:id should update a monitor", async () => {
     const createResponse = await request(app)
         .post("/monitors")
