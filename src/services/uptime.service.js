@@ -23,11 +23,11 @@ export async function getMonitorUptime(monitorId, window) {
         uptime_percentage: row.uptime_percentage === null
             ? null
             : Number(row.uptime_percentage),
-        average_latency_ms: row.average_latency_ms
-            ? Number(row.average_latency_ms)
-            : 0,
-        p95_latency_ms: row.p95_latency_ms
-            ? Number(row.p95_latency_ms)
-            : 0
+        average_latency_ms: row.average_latency_ms === null
+            ? null
+            : Number(row.average_latency_ms),
+        p95_latency_ms: row.p95_latency_ms === null
+            ? null
+            : Number(row.p95_latency_ms)
     };
 }

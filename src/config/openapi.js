@@ -711,10 +711,14 @@ const openapiSpec = {
                     },
                     average_latency_ms: {
                         type: "number",
+                        nullable: true,
+                        description: "Null when no latency measurements are available in the requested window",
                         example: 145.2,
                     },
                     p95_latency_ms: {
                         type: "number",
+                        nullable: true,
+                        description: "Null when no latency measurements are available in the requested window",
                         example: 240,
                     },
                 },

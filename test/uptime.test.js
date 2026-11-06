@@ -110,7 +110,41 @@ test("GET /monitors/:id/uptime should return null when the window has no checks"
 
         assert.equal(response.status, 200);
         assert.equal(response.body.uptime_percentage, null);
+        assert.equal(response.body.average_latency_ms, null);
+        assert.equal(response.body.p95_latency_ms, null);
     }
+});
+
+test("GET /monitors/:id/uptime returns null latencies when checks lack measurements", async () => {
+    const monitorId = await createMonitor("Checks without latency");
+    await pool.query(
+        `INSERT INTO checks (monitor_id, ok, status_code, latency_ms)
+         VALUES ($1, true, 200, NULL), ($1, false, 500, NULL)`,
+        [monitorId]
+    );
+
+    const response = await getUptime(monitorId);
+
+    assert.equal(response.status, 200);
+    assert.equal(response.body.uptime_percentage, 50);
+    assert.equal(response.body.average_latency_ms, null);
+    assert.equal(response.body.p95_latency_ms, null);
+});
+
+test("GET /monitors/:id/uptime preserves actual zero latency measurements", async () => {
+    const monitorId = await createMonitor("Zero latency measurements");
+    await pool.query(
+        `INSERT INTO checks (monitor_id, ok, status_code, latency_ms)
+         VALUES ($1, true, 200, 0), ($1, false, 500, 0)`,
+        [monitorId]
+    );
+
+    const response = await getUptime(monitorId);
+
+    assert.equal(response.status, 200);
+    assert.equal(response.body.uptime_percentage, 50);
+    assert.equal(response.body.average_latency_ms, 0);
+    assert.equal(response.body.p95_latency_ms, 0);
 });
 
 test("GET /monitors/:id/uptime should calculate uptime for available checks", async () => {
