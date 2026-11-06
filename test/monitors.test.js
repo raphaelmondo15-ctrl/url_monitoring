@@ -250,6 +250,36 @@ test("PATCH /monitors/:id should update a monitor", async () => {
     assert.strictEqual(response.body.expected_status, 200);
 });
 
+test("PATCH /monitors/:id should reject an empty body with a validation error", async () => {
+    const createResponse = await request(app)
+        .post("/monitors")
+        .send({ name: "Empty Patch", url: "https://example.com" });
+    const monitorId = createResponse.body.id;
+
+    const response = await request(app)
+        .patch(`/monitors/${monitorId}`)
+        .send({});
+
+    assert.strictEqual(response.status, 400);
+    assert.ok(response.body.error.formErrors.includes(
+        "At least one monitor field must be provided"
+    ));
+});
+
+test("PATCH /monitors/:id should reject a body containing only unknown fields", async () => {
+    const createResponse = await request(app)
+        .post("/monitors")
+        .send({ name: "Unknown Patch", url: "https://example.com" });
+    const monitorId = createResponse.body.id;
+
+    const response = await request(app)
+        .patch(`/monitors/${monitorId}`)
+        .send({ unknown_field: "ignored before validation" });
+
+    assert.strictEqual(response.status, 400);
+    assert.ok(response.body.error.formErrors.length > 0);
+});
+
 test("PATCH /monitors/:id should accept expected_status boundary values", async () => {
     const createResponse = await request(app)
         .post("/monitors")

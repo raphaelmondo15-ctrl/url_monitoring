@@ -45,4 +45,6 @@ export const updateMonitorSchema = z.object({
         .optional(),
 
     is_active: z.boolean().optional(),
+}).strict().refine((data) => Object.keys(data).length > 0, {
+    message: "At least one monitor field must be provided",
 });
