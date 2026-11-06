@@ -10,7 +10,11 @@ const {
     cleanTestDatabase,
     closeTestDatabase,
 } = await import("../test-support/database.js");
-const { runDueChecks } = await import("../src/scheduler/monitor.scheduler.js");
+const {
+    runDueChecks,
+    startScheduler,
+    stopScheduler,
+} = await import("../src/scheduler/monitor.scheduler.js");
 const { SafeRequestError } = await import("../src/security/safe-http.js");
 
 async function localTestHttpRequest(url, { timeoutMs }) {
@@ -105,11 +109,58 @@ test.beforeEach(async () => {
 });
 
 test.afterEach(async () => {
+    stopScheduler();
     await closeServers();
 });
 
 test.after(async () => {
     await closeTestDatabase();
+});
+
+test("startScheduler creates one active timer, runs checks, and stops cleanly", async () => {
+    const originalSetInterval = globalThis.setInterval;
+    const originalClearInterval = globalThis.clearInterval;
+    const timers = [];
+
+    globalThis.setInterval = (callback, delay) => {
+        const timer = {
+            callback,
+            delay,
+            active: true,
+            fire() {
+                return this.active ? this.callback() : undefined;
+            },
+        };
+        timers.push(timer);
+        return timer;
+    };
+    globalThis.clearInterval = (timer) => {
+        timer.active = false;
+    };
+
+    try {
+        const monitor = await createMonitor("http://127.0.0.1:9/scheduler-test");
+        const firstTimer = startScheduler(25);
+
+        assert.equal(firstTimer.active, true);
+        assert.equal(firstTimer.delay, 25);
+        assert.equal(timers.length, 1);
+        assert.strictEqual(startScheduler(50), firstTimer);
+        assert.equal(timers.length, 1);
+
+        await firstTimer.fire();
+        assert.equal((await getChecks(monitor.id)).length, 1);
+
+        stopScheduler();
+        assert.equal(firstTimer.active, false);
+
+        await firstTimer.fire();
+        assert.equal((await getChecks(monitor.id)).length, 1);
+    } finally {
+        stopScheduler();
+        globalThis.setInterval = originalSetInterval;
+        globalThis.clearInterval = originalClearInterval;
+    }
 });
 
 test("runDueChecks checks a new monitor and skips it until due", async () => {

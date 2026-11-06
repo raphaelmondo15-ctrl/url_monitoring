@@ -7,6 +7,7 @@ import { SafeRequestError, safeHttpRequest } from "../security/safe-http.js";
 const nextCheckTimes = new Map();
 const checksInProgress = new Set();
 const SCHEDULER_TICK_MS = 1000;
+let schedulerTimer = null;
 
 function timestampMilliseconds(value) {
     if (value == null) {
@@ -128,11 +129,24 @@ export async function runDueChecks(now = Date.now(), { httpRequest = safeHttpReq
 }
 
 export function startScheduler(tickIntervalMs = SCHEDULER_TICK_MS) {
-    const timer = setInterval(() => {
-        runDueChecks().catch((error) => {
+    if (schedulerTimer !== null) {
+        return schedulerTimer;
+    }
+
+    schedulerTimer = setInterval(() => {
+        return runDueChecks().catch((error) => {
             console.error("Scheduler tick failed:", error.message);
         });
     }, tickIntervalMs);
 
-    return timer;
+    return schedulerTimer;
+}
+
+export function stopScheduler() {
+    if (schedulerTimer === null) {
+        return;
+    }
+
+    clearInterval(schedulerTimer);
+    schedulerTimer = null;
 }
