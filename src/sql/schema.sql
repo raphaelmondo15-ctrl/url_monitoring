@@ -4,7 +4,8 @@ CREATE TABLE IF NOT EXISTS monitors (
     url TEXT NOT NULL,
     interval_seconds INTEGER NOT NULL DEFAULT 60
         CHECK (interval_seconds BETWEEN 10 AND 3600),
-    expected_status INTEGER NOT NULL DEFAULT 200,
+    expected_status INTEGER NOT NULL DEFAULT 200
+        CHECK (expected_status BETWEEN 100 AND 599),
     is_active BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );

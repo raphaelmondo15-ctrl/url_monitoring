@@ -118,6 +118,30 @@ test("POST /monitors should accept expected_status boundary values", async () =>
     }
 });
 
+test("database enforces expected_status boundaries", async () => {
+    for (const expectedStatus of [100, 599]) {
+        const result = await pool.query(
+            `INSERT INTO monitors (name, url, expected_status)
+             VALUES ($1, $2, $3)
+             RETURNING expected_status`,
+            [`Database Boundary ${expectedStatus}`, "https://example.com", expectedStatus]
+        );
+
+        assert.strictEqual(result.rows[0].expected_status, expectedStatus);
+    }
+
+    for (const expectedStatus of [99, 600]) {
+        await assert.rejects(
+            pool.query(
+                `INSERT INTO monitors (name, url, expected_status)
+                 VALUES ($1, $2, $3)`,
+                [`Database Rejected ${expectedStatus}`, "https://example.com", expectedStatus]
+            ),
+            (error) => error.code === "23514"
+        );
+    }
+});
+
 test("PATCH /monitors/:id should reject credentialed, local, and nonstandard-port URLs", async () => {
     const createResponse = await request(app)
         .post("/monitors")
