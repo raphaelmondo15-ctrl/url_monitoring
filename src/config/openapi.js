@@ -1,0 +1,941 @@
+const openapiSpec = {
+    openapi: "3.0.3",
+
+    info: {
+        title: "URL Monitoring API",
+        version: "1.0.0",
+        description:
+            "API for registering URLs, monitoring their availability, tracking checks, uptime, latency, and incidents.",
+    },
+
+    servers: [
+        {
+            url: "/",
+        },
+    ],
+
+    tags: [
+        {
+            name: "Monitors",
+            description: "Create and manage monitored URLs",
+        },
+        {
+            name: "Checks",
+            description: "View monitor check history",
+        },
+        {
+            name: "Uptime",
+            description: "View monitor uptime and latency statistics",
+        },
+        {
+            name: "Incidents",
+            description: "View monitoring incidents",
+        },
+        {
+            name: "Status",
+            description: "Public monitoring status",
+        },
+        {
+            name: "Health",
+            description: "Application health",
+        },
+    ],
+
+    paths: {
+        "/health": {
+            get: {
+                tags: ["Health"],
+                summary: "Check API health",
+                responses: {
+                    200: {
+                        description: "API is healthy",
+                        content: {
+                            "application/json": {
+                                schema: {
+                                    type: "object",
+                                    required: ["status"],
+                                    properties: {
+                                        status: {
+                                            type: "string",
+                                            example: "ok",
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        },
+
+        "/monitors": {
+            post: {
+                tags: ["Monitors"],
+                summary: "Create a monitor",
+                requestBody: {
+                    required: true,
+                    content: {
+                        "application/json": {
+                            schema: {
+                                $ref: "#/components/schemas/CreateMonitor",
+                            },
+                            example: {
+                                name: "Google",
+                                url: "https://www.google.com",
+                                interval_seconds: 60,
+                                expected_status: 200,
+                            },
+                        },
+                    },
+                },
+                responses: {
+                    201: {
+                        description: "Monitor created successfully",
+                        content: {
+                            "application/json": {
+                                schema: {
+                                    $ref: "#/components/schemas/Monitor",
+                                },
+                            },
+                        },
+                    },
+                    400: {
+                        $ref: "#/components/responses/ValidationError",
+                    },
+                    500: {
+                        $ref: "#/components/responses/InternalError",
+                    },
+                },
+            },
+
+            get: {
+                tags: ["Monitors"],
+                summary: "List monitors",
+                parameters: [
+                    {
+                        $ref: "#/components/parameters/After",
+                    },
+                    {
+                        $ref: "#/components/parameters/Limit",
+                    },
+                ],
+                responses: {
+                    200: {
+                        description: "List of monitors",
+                        content: {
+                            "application/json": {
+                                schema: {
+                                    $ref: "#/components/schemas/PaginatedMonitors",
+                                },
+                            },
+                        },
+                    },
+                    400: {
+                        $ref: "#/components/responses/ValidationError",
+                    },
+                    500: {
+                        $ref: "#/components/responses/InternalError",
+                    },
+                },
+            },
+        },
+
+        "/monitors/{id}": {
+            get: {
+                tags: ["Monitors"],
+                summary: "Get a monitor",
+                parameters: [
+                    {
+                        $ref: "#/components/parameters/MonitorId",
+                    },
+                ],
+                responses: {
+                    200: {
+                        description: "Monitor details",
+                        content: {
+                            "application/json": {
+                                schema: {
+                                    $ref: "#/components/schemas/Monitor",
+                                },
+                            },
+                        },
+                    },
+                    400: {
+                        $ref: "#/components/responses/ValidationError",
+                    },
+                    404: {
+                        $ref: "#/components/responses/NotFound",
+                    },
+                    500: {
+                        $ref: "#/components/responses/InternalError",
+                    },
+                },
+            },
+
+            patch: {
+                tags: ["Monitors"],
+                summary: "Update a monitor",
+                parameters: [
+                    {
+                        $ref: "#/components/parameters/MonitorId",
+                    },
+                ],
+                requestBody: {
+                    required: true,
+                    content: {
+                        "application/json": {
+                            schema: {
+                                $ref: "#/components/schemas/UpdateMonitor",
+                            },
+                        },
+                    },
+                },
+                responses: {
+                    200: {
+                        description: "Monitor updated successfully",
+                        content: {
+                            "application/json": {
+                                schema: {
+                                    $ref: "#/components/schemas/Monitor",
+                                },
+                            },
+                        },
+                    },
+                    400: {
+                        $ref: "#/components/responses/ValidationError",
+                    },
+                    404: {
+                        description: "Monitor not found",
+                        content: {
+                            "application/json": {
+                                schema: {
+                                    $ref: "#/components/schemas/Error",
+                                },
+                            },
+                        },
+                    },
+                    500: {
+                        $ref: "#/components/responses/InternalError",
+                    },
+                },
+            },
+
+            delete: {
+                tags: ["Monitors"],
+                summary: "Delete a monitor",
+                parameters: [
+                    {
+                        $ref: "#/components/parameters/MonitorId",
+                    },
+                ],
+                responses: {
+                    204: {
+                        description: "Monitor deleted successfully",
+                    },
+                    400: {
+                        $ref: "#/components/responses/ValidationError",
+                    },
+                    404: {
+                        $ref: "#/components/responses/NotFound",
+                    },
+                    500: {
+                        $ref: "#/components/responses/InternalError",
+                    },
+                },
+            },
+        },
+
+        "/monitors/{id}/checks": {
+            get: {
+                tags: ["Checks"],
+                summary: "Get monitor check history",
+                parameters: [
+                    {
+                        $ref: "#/components/parameters/MonitorId",
+                    },
+                    {
+                        $ref: "#/components/parameters/After",
+                    },
+                    {
+                        $ref: "#/components/parameters/Limit",
+                    },
+                ],
+                responses: {
+                    200: {
+                        description: "Check history",
+                        content: {
+                            "application/json": {
+                                schema: {
+                                    $ref: "#/components/schemas/PaginatedChecks",
+                                },
+                            },
+                        },
+                    },
+                    400: {
+                        $ref: "#/components/responses/ValidationError",
+                    },
+                    404: {
+                        $ref: "#/components/responses/NotFound",
+                    },
+                    500: {
+                        $ref: "#/components/responses/InternalError",
+                    },
+                },
+            },
+        },
+
+        "/monitors/{id}/checks.csv": {
+            get: {
+                tags: ["Checks"],
+                summary: "Export monitor checks as CSV",
+                parameters: [
+                    {
+                        $ref: "#/components/parameters/MonitorId",
+                    },
+                ],
+                responses: {
+                    200: {
+                        description: "CSV export of up to 10,000 monitor checks, ordered by ID ascending.",
+                        content: {
+                            "text/csv": {
+                                schema: {
+                                    type: "string",
+                                    example:
+                                        "id,monitor_id,checked_at,ok,status_code,latency_ms,error",
+                                },
+                            },
+                        },
+                        headers: {
+                            "Content-Disposition": {
+                                description: "Attachment filename for the CSV download",
+                                schema: {
+                                    type: "string",
+                                    example: 'attachment; filename="monitor-1-checks.csv"',
+                                },
+                            },
+                        },
+                    },
+                    400: {
+                        $ref: "#/components/responses/ValidationError",
+                    },
+                    404: {
+                        $ref: "#/components/responses/NotFound",
+                    },
+                    500: {
+                        $ref: "#/components/responses/InternalError",
+                    },
+                },
+            },
+        },
+
+        "/monitors/{id}/uptime": {
+            get: {
+                tags: ["Uptime"],
+                summary: "Get monitor uptime statistics",
+                parameters: [
+                    {
+                        $ref: "#/components/parameters/MonitorId",
+                    },
+                    {
+                        name: "window",
+                        in: "query",
+                        required: false,
+                        description: "Relative time window; accepts a non-negative integer followed by s, m, h, or d. Defaults to 24h.",
+                        schema: {
+                            type: "string",
+                            pattern: "^\\d+[smhd]$",
+                            default: "24h",
+                            example: "24h",
+                        },
+                    },
+                ],
+                responses: {
+                    200: {
+                        description: "Uptime and latency statistics",
+                        content: {
+                            "application/json": {
+                                schema: {
+                                    $ref: "#/components/schemas/UptimeReport",
+                                },
+                            },
+                        },
+                    },
+                    400: {
+                        $ref: "#/components/responses/ValidationError",
+                    },
+                    404: {
+                        $ref: "#/components/responses/NotFound",
+                    },
+                    500: {
+                        $ref: "#/components/responses/InternalError",
+                    },
+                },
+            },
+        },
+
+        "/incidents": {
+            get: {
+                tags: ["Incidents"],
+                summary: "List all incidents",
+                parameters: [
+                    {
+                        $ref: "#/components/parameters/IncidentAfter",
+                    },
+                    {
+                        $ref: "#/components/parameters/Limit",
+                    },
+                ],
+                responses: {
+                    200: {
+                        description: "List of incidents",
+                        content: {
+                            "application/json": {
+                                schema: {
+                                    $ref: "#/components/schemas/PaginatedIncidents",
+                                },
+                            },
+                        },
+                    },
+                    400: {
+                        $ref: "#/components/responses/ValidationError",
+                    },
+                    500: {
+                        $ref: "#/components/responses/InternalError",
+                    },
+                },
+            },
+        },
+
+        "/monitors/{id}/incidents": {
+            get: {
+                tags: ["Incidents"],
+                summary: "List incidents for a monitor",
+                parameters: [
+                    {
+                        $ref: "#/components/parameters/MonitorId",
+                    },
+                    {
+                        $ref: "#/components/parameters/IncidentAfter",
+                    },
+                    {
+                        $ref: "#/components/parameters/Limit",
+                    },
+                ],
+                responses: {
+                    200: {
+                        description: "Monitor incidents",
+                        content: {
+                            "application/json": {
+                                schema: {
+                                    $ref: "#/components/schemas/PaginatedIncidents",
+                                },
+                            },
+                        },
+                    },
+                    400: {
+                        $ref: "#/components/responses/ValidationError",
+                    },
+                    404: {
+                        $ref: "#/components/responses/NotFound",
+                    },
+                    500: {
+                        $ref: "#/components/responses/InternalError",
+                    },
+                },
+            },
+        },
+
+        "/status": {
+            get: {
+                tags: ["Status"],
+                summary: "Get public monitoring status",
+                responses: {
+                    200: {
+                        description: "Current status of active monitors",
+                        content: {
+                            "application/json": {
+                                schema: {
+                                    type: "object",
+                                    required: ["monitors"],
+                                    properties: {
+                                        monitors: {
+                                            type: "array",
+                                            items: {
+                                                $ref: "#/components/schemas/StatusMonitor",
+                                            },
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                    500: {
+                        $ref: "#/components/responses/InternalError",
+                    },
+                },
+            },
+        },
+    },
+
+    components: {
+        parameters: {
+            MonitorId: {
+                name: "id",
+                in: "path",
+                required: true,
+                description: "Monitor ID",
+                schema: {
+                    type: "integer",
+                    minimum: 1,
+                    maximum: 2147483647,
+                    example: 1,
+                },
+            },
+
+            After: {
+                name: "after",
+                in: "query",
+                required: false,
+                description: "Return records with IDs greater than this ID. Results are ordered by ascending ID.",
+                schema: {
+                    type: "integer",
+                    minimum: 1,
+                    maximum: 2147483647,
+                    example: 10,
+                },
+            },
+
+            IncidentAfter: {
+                name: "after",
+                in: "query",
+                required: false,
+                description: "Opaque base64url cursor from the previous page; incident pages are ordered by started_at and ID descending.",
+                schema: {
+                    type: "string",
+                    maxLength: 256,
+                    pattern: "^[A-Za-z0-9_-]+$",
+                },
+            },
+
+            Limit: {
+                name: "limit",
+                in: "query",
+                required: false,
+                description: "Number of records to return, between 1 and 100",
+                schema: {
+                    type: "integer",
+                    minimum: 1,
+                    maximum: 100,
+                    default: 10,
+                    example: 10,
+                },
+            },
+        },
+
+        schemas: {
+            Monitor: {
+                type: "object",
+                required: ["id", "name", "url", "interval_seconds", "expected_status", "is_active", "created_at"],
+                properties: {
+                    id: {
+                        type: "integer",
+                        maximum: 2147483647,
+                        example: 1,
+                    },
+                    name: {
+                        type: "string",
+                        minLength: 1,
+                        maxLength: 120,
+                        example: "Google",
+                    },
+                    url: {
+                        type: "string",
+                        format: "uri",
+                        description: "Must be a syntactically valid HTTP or HTTPS URL on the standard port with no embedded credentials. Create/update rejects localhost, hostnames ending in .localhost or .local, and non-public IP literals. Other hostnames are DNS-resolved during checks; every resolved address must be publicly routable.",
+                        example: "https://www.google.com",
+                    },
+                    interval_seconds: {
+                        type: "integer",
+                        minimum: 10,
+                        maximum: 3600,
+                        example: 60,
+                    },
+                    expected_status: {
+                        type: "integer",
+                        minimum: 100,
+                        maximum: 599,
+                        example: 200,
+                    },
+                    is_active: {
+                        type: "boolean",
+                        example: true,
+                    },
+                    created_at: {
+                        type: "string",
+                        format: "date-time",
+                    },
+                },
+            },
+
+            CreateMonitor: {
+                type: "object",
+                required: ["name", "url"],
+                properties: {
+                    name: {
+                        type: "string",
+                        minLength: 1,
+                        maxLength: 120,
+                        example: "Google",
+                    },
+                    url: {
+                        type: "string",
+                        format: "uri",
+                        description: "Must be a syntactically valid HTTP or HTTPS URL on the standard port with no embedded credentials. Create/update rejects localhost, hostnames ending in .localhost or .local, and non-public IP literals. Other hostnames are DNS-resolved during checks; every resolved address must be publicly routable.",
+                        example: "https://www.google.com",
+                    },
+                    interval_seconds: {
+                        type: "integer",
+                        minimum: 10,
+                        maximum: 3600,
+                        default: 60,
+                        example: 60,
+                    },
+                    expected_status: {
+                        type: "integer",
+                        minimum: 100,
+                        maximum: 599,
+                        default: 200,
+                        example: 200,
+                    },
+                },
+            },
+
+            UpdateMonitor: {
+                type: "object",
+                minProperties: 1,
+                additionalProperties: false,
+                properties: {
+                    name: {
+                        type: "string",
+                        minLength: 1,
+                        maxLength: 120,
+                    },
+                    url: {
+                        type: "string",
+                        format: "uri",
+                        description: "Must be a syntactically valid HTTP or HTTPS URL on the standard port with no embedded credentials. Create/update rejects localhost, hostnames ending in .localhost or .local, and non-public IP literals. Other hostnames are DNS-resolved during checks; every resolved address must be publicly routable.",
+                    },
+                    interval_seconds: {
+                        type: "integer",
+                        minimum: 10,
+                        maximum: 3600,
+                    },
+                    expected_status: {
+                        type: "integer",
+                        minimum: 100,
+                        maximum: 599,
+                    },
+                    is_active: {
+                        type: "boolean",
+                    },
+                },
+            },
+
+            Check: {
+                type: "object",
+                required: ["id", "monitor_id", "checked_at", "ok", "status_code", "latency_ms", "error"],
+                properties: {
+                    id: {
+                        type: "integer",
+                        maximum: 2147483647,
+                        example: 1,
+                    },
+                    monitor_id: {
+                        type: "integer",
+                        maximum: 2147483647,
+                        example: 1,
+                    },
+                    checked_at: {
+                        type: "string",
+                        format: "date-time",
+                    },
+                    ok: {
+                        type: "boolean",
+                        example: true,
+                    },
+                    status_code: {
+                        type: "integer",
+                        nullable: true,
+                        example: 200,
+                    },
+                    latency_ms: {
+                        type: "integer",
+                        nullable: true,
+                        example: 142,
+                    },
+                    error: {
+                        type: "string",
+                        nullable: true,
+                        example: null,
+                    },
+                },
+            },
+
+            Incident: {
+                type: "object",
+                required: ["id", "monitor_id", "started_at", "resolved_at", "cause"],
+                properties: {
+                    id: {
+                        type: "integer",
+                        maximum: 2147483647,
+                        example: 1,
+                    },
+                    monitor_id: {
+                        type: "integer",
+                        maximum: 2147483647,
+                        example: 1,
+                    },
+                    started_at: {
+                        type: "string",
+                        format: "date-time",
+                    },
+                    resolved_at: {
+                        type: "string",
+                        format: "date-time",
+                        nullable: true,
+                    },
+                    cause: {
+                        type: "string",
+                        nullable: true,
+                        example: "Expected status 200, received 500",
+                    },
+                },
+            },
+
+            UptimeReport: {
+                type: "object",
+                required: ["uptime_percentage", "average_latency_ms", "p95_latency_ms"],
+                properties: {
+                    uptime_percentage: {
+                        type: "number",
+                        nullable: true,
+                        description: "Null when no checks are available in the requested window",
+                        example: 99.5,
+                    },
+                    average_latency_ms: {
+                        type: "number",
+                        nullable: true,
+                        description: "Null when no latency measurements are available in the requested window",
+                        example: 145.2,
+                    },
+                    p95_latency_ms: {
+                        type: "number",
+                        nullable: true,
+                        description: "Null when no latency measurements are available in the requested window",
+                        example: 240,
+                    },
+                },
+            },
+
+            StatusMonitor: {
+                type: "object",
+                required: ["id", "name", "url", "is_active", "ok", "checked_at"],
+                properties: {
+                    id: {
+                        type: "integer",
+                        maximum: 2147483647,
+                        example: 1,
+                    },
+                    name: {
+                        type: "string",
+                        example: "Google",
+                    },
+                    url: {
+                        type: "string",
+                        format: "uri",
+                        example: "https://www.google.com",
+                    },
+                    is_active: {
+                        type: "boolean",
+                        example: true,
+                    },
+                    ok: {
+                        type: "boolean",
+                        nullable: true,
+                        example: true,
+                    },
+                    checked_at: {
+                        type: "string",
+                        format: "date-time",
+                        nullable: true,
+                    },
+                },
+            },
+
+            PaginatedMonitors: {
+                type: "object",
+                required: ["items", "next_cursor"],
+                properties: {
+                    items: {
+                        type: "array",
+                        items: {
+                            $ref: "#/components/schemas/Monitor",
+                        },
+                    },
+                    next_cursor: {
+                        type: "integer",
+                        maximum: 2147483647,
+                        nullable: true,
+                        example: 10,
+                    },
+                },
+            },
+
+            PaginatedChecks: {
+                type: "object",
+                required: ["items", "next_cursor"],
+                properties: {
+                    items: {
+                        type: "array",
+                        items: {
+                            $ref: "#/components/schemas/Check",
+                        },
+                    },
+                    next_cursor: {
+                        type: "integer",
+                        maximum: 2147483647,
+                        nullable: true,
+                        example: 10,
+                    },
+                },
+            },
+
+            PaginatedIncidents: {
+                type: "object",
+                required: ["items", "next_cursor"],
+                properties: {
+                    items: {
+                        type: "array",
+                        items: {
+                            $ref: "#/components/schemas/Incident",
+                        },
+                    },
+                    next_cursor: {
+                        type: "string",
+                        nullable: true,
+                        description: "Opaque cursor to retrieve the next page",
+                    },
+                },
+            },
+
+            Error: {
+                type: "object",
+                required: ["error"],
+                properties: {
+                    error: {
+                        type: "string",
+                        example: "Monitor not found",
+                    },
+                    message: {
+                        type: "string",
+                        example: "An unexpected error occurred",
+                    },
+                },
+            },
+
+            ValidationErrorBody: {
+                oneOf: [
+                    {
+                        type: "object",
+                        required: ["error", "details"],
+                        properties: {
+                            error: {
+                                type: "string",
+                                example: "Validation failed",
+                            },
+                            details: {
+                                type: "array",
+                                items: {
+                                    type: "object",
+                                    properties: {
+                                        code: { type: "string" },
+                                        path: {
+                                            type: "array",
+                                            items: {
+                                                oneOf: [
+                                                    { type: "string" },
+                                                    { type: "integer" },
+                                                ],
+                                            },
+                                        },
+                                        message: { type: "string" },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                    {
+                        type: "object",
+                        required: ["error"],
+                        properties: {
+                            error: {
+                                type: "object",
+                                required: ["formErrors", "fieldErrors"],
+                                properties: {
+                                    formErrors: {
+                                        type: "array",
+                                        items: { type: "string" },
+                                    },
+                                    fieldErrors: {
+                                        type: "object",
+                                        additionalProperties: {
+                                            type: "array",
+                                            items: { type: "string" },
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                ],
+            },
+        },
+
+        responses: {
+            ValidationError: {
+                description: "Request validation failed",
+                content: {
+                    "application/json": {
+                        schema: {
+                            $ref: "#/components/schemas/ValidationErrorBody",
+                        },
+                    },
+                },
+            },
+
+            NotFound: {
+                description: "Resource not found",
+                content: {
+                    "application/json": {
+                        schema: {
+                            $ref: "#/components/schemas/Error",
+                        },
+                    },
+                },
+            },
+
+            InternalError: {
+                description: "An unexpected error occurred. Internal details are not exposed.",
+                content: {
+                    "application/json": {
+                        schema: {
+                            $ref: "#/components/schemas/Error",
+                        },
+                    },
+                },
+            },
+        },
+    },
+};
+
+export default openapiSpec;
