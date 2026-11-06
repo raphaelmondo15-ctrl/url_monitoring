@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert";
 import http from "node:http";
+import request from "supertest";
 
 process.env.CHECK_TIMEOUT_MS = "500";
 
@@ -16,6 +17,8 @@ const {
     stopScheduler,
 } = await import("../src/scheduler/monitor.scheduler.js");
 const { SafeRequestError } = await import("../src/security/safe-http.js");
+const { createSafeHttpRequester } = await import("../src/security/safe-http.js");
+const { default: app } = await import("../src/app.js");
 
 async function localTestHttpRequest(url, { timeoutMs }) {
     const response = await fetch(url, {
@@ -377,4 +380,67 @@ test("runDueChecks records DNS validation failures without exposing resolver det
     assert.equal(checks[0].ok, false);
     assert.equal(checks[0].error, "Monitor destination rejected");
     assert.equal(checks[0].error.includes("10.1.2.3"), false);
+});
+
+test("ordinary DNS and connection failures persist safely and leave API available", async () => {
+    const failures = [
+        {
+            name: "Ordinary DNS failure",
+            url: "https://dns-network-failure.example",
+            expectedError: "Monitor destination rejected",
+            createRequester: () => createSafeHttpRequester({
+                resolveHost: async () => {
+                    const error = new Error("getaddrinfo ENOTFOUND private.internal");
+                    error.code = "ENOTFOUND";
+                    throw error;
+                },
+                request: async () => assert.fail("request must not run after DNS failure"),
+            }),
+            privateDetail: "private.internal",
+        },
+        {
+            name: "Ordinary connection refusal",
+            url: "https://connection-refused.example",
+            expectedError: "Monitor request failed",
+            createRequester: () => createSafeHttpRequester({
+                resolveHost: async () => [{ address: "8.8.8.8", family: 4 }],
+                request: async () => {
+                    const error = new Error("connect ECONNREFUSED 8.8.8.8:443 via private-route");
+                    error.code = "ECONNREFUSED";
+                    throw error;
+                },
+            }),
+            privateDetail: "private-route",
+        },
+    ];
+
+    for (const failure of failures) {
+        const monitor = await createMonitor(failure.url, { name: failure.name });
+
+        await assert.doesNotReject(
+            runDueChecks(Date.now(), { httpRequest: failure.createRequester() })
+        );
+
+        const checks = await getChecks(monitor.id);
+        assert.equal(checks.length, 1);
+        assert.equal(checks[0].ok, false);
+        assert.equal(checks[0].status_code, null);
+        assert.equal(checks[0].error, failure.expectedError);
+        assert.equal(checks[0].error.includes(failure.privateDetail), false);
+
+        const checkResponse = await request(app)
+            .get(`/monitors/${monitor.id}/checks`);
+        assert.equal(checkResponse.status, 200);
+        assert.equal(checkResponse.body.items[0].error, failure.expectedError);
+        assert.equal(JSON.stringify(checkResponse.body).includes(failure.privateDetail), false);
+
+        const incidentResponse = await request(app).get("/incidents");
+        assert.equal(incidentResponse.status, 200);
+        const incident = incidentResponse.body.items.find(
+            (item) => item.monitor_id === monitor.id
+        );
+        assert.ok(incident);
+        assert.equal(incident.cause, failure.expectedError);
+        assert.equal(JSON.stringify(incidentResponse.body).includes(failure.privateDetail), false);
+    }
 });

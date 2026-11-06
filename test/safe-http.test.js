@@ -132,6 +132,48 @@ test("DNS results are validated completely and selected addresses are pinned", a
     );
 });
 
+test("DNS lookup failures are normalized without exposing resolver details", async () => {
+    let requestCalled = false;
+    const requester = createSafeHttpRequester({
+        resolveHost: async () => {
+            const error = new Error("getaddrinfo ENOTFOUND private-service.internal");
+            error.code = "ENOTFOUND";
+            throw error;
+        },
+        request: async () => {
+            requestCalled = true;
+            return { statusCode: 200 };
+        },
+    });
+
+    await assert.rejects(
+        requester("https://missing.example"),
+        (error) => {
+            assert.ok(error instanceof SafeRequestError);
+            assert.equal(error.message, "Unable to resolve monitor destination");
+            assert.equal(error.message.includes("private-service.internal"), false);
+            return true;
+        }
+    );
+    assert.equal(requestCalled, false);
+});
+
+test("connection failures from the pinned request reject without escaping as uncaught errors", async () => {
+    const connectionError = new Error("connect ECONNREFUSED 8.8.8.8:443 via private-route");
+    connectionError.code = "ECONNREFUSED";
+    const requester = createSafeHttpRequester({
+        resolveHost: async () => [{ address: publicIpv4, family: 4 }],
+        request: async () => {
+            throw connectionError;
+        },
+    });
+
+    await assert.rejects(
+        requester("https://refused.example"),
+        (error) => error === connectionError
+    );
+});
+
 test("DNS resolution timeout rejects and never invokes the HTTP request", async () => {
     let requestCalled = false;
     const keepEventLoopAlive = setTimeout(() => {}, 100);
