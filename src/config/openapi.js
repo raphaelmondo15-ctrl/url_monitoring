@@ -53,6 +53,7 @@ const openapiSpec = {
                             "application/json": {
                                 schema: {
                                     type: "object",
+                                    required: ["status"],
                                     properties: {
                                         status: {
                                             type: "string",
@@ -204,7 +205,7 @@ const openapiSpec = {
                         $ref: "#/components/responses/ValidationError",
                     },
                     404: {
-                        description: "Monitor not found, or the update contains no recognized fields.",
+                        description: "Monitor not found",
                         content: {
                             "application/json": {
                                 schema: {
@@ -455,6 +456,7 @@ const openapiSpec = {
                             "application/json": {
                                 schema: {
                                     type: "object",
+                                    required: ["monitors"],
                                     properties: {
                                         monitors: {
                                             type: "array",
@@ -485,6 +487,7 @@ const openapiSpec = {
                 schema: {
                     type: "integer",
                     minimum: 1,
+                    maximum: 2147483647,
                     example: 1,
                 },
             },
@@ -497,6 +500,7 @@ const openapiSpec = {
                 schema: {
                     type: "integer",
                     minimum: 1,
+                    maximum: 2147483647,
                     example: 10,
                 },
             },
@@ -535,6 +539,7 @@ const openapiSpec = {
                 properties: {
                     id: {
                         type: "integer",
+                        maximum: 2147483647,
                         example: 1,
                     },
                     name: {
@@ -546,11 +551,13 @@ const openapiSpec = {
                     url: {
                         type: "string",
                         format: "uri",
-                        description: "Must use HTTP or HTTPS on the standard port, contain no embedded credentials, and resolve only to publicly routable IP addresses.",
+                        description: "Must be a syntactically valid HTTP or HTTPS URL on the standard port with no embedded credentials. Create/update rejects localhost, hostnames ending in .localhost or .local, and non-public IP literals. Other hostnames are DNS-resolved during checks; every resolved address must be publicly routable.",
                         example: "https://www.google.com",
                     },
                     interval_seconds: {
                         type: "integer",
+                        minimum: 10,
+                        maximum: 3600,
                         example: 60,
                     },
                     expected_status: {
@@ -583,7 +590,7 @@ const openapiSpec = {
                     url: {
                         type: "string",
                         format: "uri",
-                        description: "Must use HTTP or HTTPS on the standard port, contain no embedded credentials, and resolve only to publicly routable IP addresses.",
+                        description: "Must be a syntactically valid HTTP or HTTPS URL on the standard port with no embedded credentials. Create/update rejects localhost, hostnames ending in .localhost or .local, and non-public IP literals. Other hostnames are DNS-resolved during checks; every resolved address must be publicly routable.",
                         example: "https://www.google.com",
                     },
                     interval_seconds: {
@@ -605,6 +612,8 @@ const openapiSpec = {
 
             UpdateMonitor: {
                 type: "object",
+                minProperties: 1,
+                additionalProperties: false,
                 properties: {
                     name: {
                         type: "string",
@@ -614,7 +623,7 @@ const openapiSpec = {
                     url: {
                         type: "string",
                         format: "uri",
-                        description: "Must use HTTP or HTTPS on the standard port, contain no embedded credentials, and resolve only to publicly routable IP addresses.",
+                        description: "Must be a syntactically valid HTTP or HTTPS URL on the standard port with no embedded credentials. Create/update rejects localhost, hostnames ending in .localhost or .local, and non-public IP literals. Other hostnames are DNS-resolved during checks; every resolved address must be publicly routable.",
                     },
                     interval_seconds: {
                         type: "integer",
@@ -638,10 +647,12 @@ const openapiSpec = {
                 properties: {
                     id: {
                         type: "integer",
+                        maximum: 2147483647,
                         example: 1,
                     },
                     monitor_id: {
                         type: "integer",
+                        maximum: 2147483647,
                         example: 1,
                     },
                     checked_at: {
@@ -676,10 +687,12 @@ const openapiSpec = {
                 properties: {
                     id: {
                         type: "integer",
+                        maximum: 2147483647,
                         example: 1,
                     },
                     monitor_id: {
                         type: "integer",
+                        maximum: 2147483647,
                         example: 1,
                     },
                     started_at: {
@@ -730,6 +743,7 @@ const openapiSpec = {
                 properties: {
                     id: {
                         type: "integer",
+                        maximum: 2147483647,
                         example: 1,
                     },
                     name: {
@@ -770,6 +784,7 @@ const openapiSpec = {
                     },
                     next_cursor: {
                         type: "integer",
+                        maximum: 2147483647,
                         nullable: true,
                         example: 10,
                     },
@@ -788,6 +803,7 @@ const openapiSpec = {
                     },
                     next_cursor: {
                         type: "integer",
+                        maximum: 2147483647,
                         nullable: true,
                         example: 10,
                     },
